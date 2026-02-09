@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, FileQuestion, Library, Users } from "lucide-react";
+import { LayoutDashboard, FileQuestion, Library } from "lucide-react";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminQuestions from "@/components/admin/AdminQuestions";
 import AdminResources from "@/components/admin/AdminResources";
-import AdminUsers from "@/components/admin/AdminUsers";
 
 export default function AdminPanel() {
   return (
@@ -19,7 +15,7 @@ export default function AdminPanel() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -32,10 +28,6 @@ export default function AdminPanel() {
               <Library className="h-4 w-4" />
               <span className="hidden sm:inline">Resources</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Users</span>
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -46,9 +38,6 @@ export default function AdminPanel() {
           </TabsContent>
           <TabsContent value="resources">
             <AdminResources />
-          </TabsContent>
-          <TabsContent value="users">
-            <AdminUsers />
           </TabsContent>
         </Tabs>
       </div>
