@@ -24,9 +24,7 @@ const userLinks = [
 
 const adminLinks = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/admin/questions", icon: FileQuestion, label: "Questions" },
-  { to: "/admin/resources", icon: Library, label: "Resources" },
-  { to: "/admin/users", icon: Users, label: "Users" },
+  { to: "/admin", icon: Settings, label: "Admin Panel" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
