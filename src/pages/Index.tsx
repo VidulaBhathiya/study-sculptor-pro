@@ -68,17 +68,12 @@ export default function Index() {
             <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-xl">
               Take a placement quiz, discover your weak spots, and follow a study plan built just for you. HTML, CSS, and JavaScript — all in one place.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Button variant="hero" size="lg" asChild>
-                <Link to="/auth">
-                  Start Learning Free
-                  <ChevronRight className="h-5 w-5" />
-                </Link>
-              </Button>
-              <Button variant="heroOutline" size="lg" asChild>
-                <Link to="/auth">I'm an Admin</Link>
-              </Button>
-            </div>
+            <Button variant="hero" size="lg" asChild>
+              <Link to="/auth">
+                Start Learning Free
+                <ChevronRight className="h-5 w-5" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
