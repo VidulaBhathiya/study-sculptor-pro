@@ -50,14 +50,14 @@ export default function Index() {
       </nav>
 
       {/* Hero */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroBg})` }}
         />
         <div className="absolute inset-0 hero-gradient opacity-80" />
-        <div className="container relative z-10 py-32">
-          <div className="max-w-2xl animate-fade-in">
+        <div className="container relative z-10 py-32 flex justify-center">
+          <div className="max-w-2xl animate-fade-in text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/20 text-secondary text-sm font-medium mb-6">
               <Zap className="h-4 w-4" />
               Personalized Learning Platform
