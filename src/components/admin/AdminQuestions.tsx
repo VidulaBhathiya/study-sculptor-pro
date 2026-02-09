@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, Code2, Palette, Server } from "lucide-react";
 
 interface Topic { id: string; name: string; category: string; }
 interface Question {
@@ -17,6 +17,12 @@ interface Question {
   topic_id: string; topic?: Topic;
 }
 
+const categoryConfig: Record<string, { icon: any; gradient: string; border: string }> = {
+  HTML: { icon: Code2, gradient: "from-orange-500 to-red-500", border: "border-orange-500/30" },
+  CSS: { icon: Palette, gradient: "from-blue-500 to-cyan-500", border: "border-blue-500/30" },
+  PHP: { icon: Server, gradient: "from-violet-500 to-purple-500", border: "border-violet-500/30" },
+};
+
 export default function AdminQuestions() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -24,6 +30,7 @@ export default function AdminQuestions() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [form, setForm] = useState({
     question_text: "", option_a: "", option_b: "", option_c: "", option_d: "",
     correct_option: "a", difficulty: "medium", topic_id: "",
@@ -77,10 +84,57 @@ export default function AdminQuestions() {
     return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" /></div>;
   }
 
+  // Count questions per category
+  const categoryCounts: Record<string, number> = {};
+  questions.forEach((q) => {
+    const cat = q.topic?.category || "Other";
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  });
+
+  const filteredQuestions = activeCategory
+    ? questions.filter((q) => q.topic?.category === activeCategory)
+    : questions;
+
   return (
     <div className="space-y-6">
+      {/* Category Filter Boxes */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {["HTML", "CSS", "PHP"].map((cat) => {
+          const config = categoryConfig[cat];
+          const count = categoryCounts[cat] || 0;
+          const isActive = activeCategory === cat;
+          const Icon = config.icon;
+
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(isActive ? null : cat)}
+              className={`text-left transition-all rounded-xl overflow-hidden ${
+                isActive ? "ring-2 ring-offset-2 ring-offset-background ring-primary scale-[1.02]" : "hover:scale-[1.01]"
+              }`}
+            >
+              <Card className={`border-0 shadow-card overflow-hidden ${isActive ? "shadow-elevated" : ""}`}>
+                <div className={`bg-gradient-to-br ${config.gradient} p-5 text-white`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Icon className="h-6 w-6 opacity-90" />
+                    <span className="text-2xl font-display font-bold">{count}</span>
+                  </div>
+                  <h3 className="text-lg font-display font-bold">{cat}</h3>
+                  <p className="text-xs opacity-80 mt-0.5">
+                    {count} question{count !== 1 ? "s" : ""} • Click to {isActive ? "show all" : "filter"}
+                  </p>
+                </div>
+              </Card>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Header with count and add button */}
       <div className="flex items-center justify-between">
-        <p className="text-muted-foreground">{questions.length} questions total</p>
+        <p className="text-muted-foreground">
+          {activeCategory ? `${filteredQuestions.length} ${activeCategory} questions` : `${questions.length} questions total`}
+        </p>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
             <Button variant="hero"><Plus className="h-4 w-4 mr-2" />Add Question</Button>
@@ -131,27 +185,34 @@ export default function AdminQuestions() {
         </Dialog>
       </div>
 
+      {/* Question List */}
       <div className="space-y-3">
-        {questions.map((q) => (
-          <Card key={q.id} className="shadow-card">
-            <CardContent className="flex items-start gap-4 py-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm mb-1">{q.question_text}</p>
-                <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span>{q.topic?.name}</span><span>•</span>
-                  <span className="capitalize">{q.difficulty}</span><span>•</span>
-                  <span>Answer: {q.correct_option.toUpperCase()}</span>
+        {filteredQuestions.map((q) => {
+          const catConfig = categoryConfig[q.topic?.category || ""] || { border: "border-border" };
+          return (
+            <Card key={q.id} className={`shadow-card border-l-4 ${catConfig.border}`}>
+              <CardContent className="flex items-start gap-4 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm mb-1">{q.question_text}</p>
+                  <div className="flex gap-2 text-xs text-muted-foreground">
+                    <span className="font-semibold">{q.topic?.category}</span><span>•</span>
+                    <span>{q.topic?.name}</span><span>•</span>
+                    <span className="capitalize">{q.difficulty}</span><span>•</span>
+                    <span>Answer: {q.correct_option.toUpperCase()}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-1 shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(q.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {questions.length === 0 && (
-          <Card className="shadow-card"><CardContent className="py-12 text-center text-muted-foreground">No questions yet. Add your first question!</CardContent></Card>
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(q.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {filteredQuestions.length === 0 && (
+          <Card className="shadow-card"><CardContent className="py-12 text-center text-muted-foreground">
+            {activeCategory ? `No ${activeCategory} questions yet.` : "No questions yet. Add your first question!"}
+          </CardContent></Card>
         )}
       </div>
     </div>
