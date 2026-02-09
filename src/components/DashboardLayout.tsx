@@ -66,8 +66,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
-          <div className="px-3 py-2 text-xs text-sidebar-foreground/50 truncate mb-2">
-            {user?.email}
+          <div className="px-3 py-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                role === "admin"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-secondary text-secondary-foreground"
+              }`}>
+                {role}
+              </span>
+            </div>
+            <div className="text-xs text-sidebar-foreground/50 truncate">
+              {user?.email}
+            </div>
           </div>
           <button
             onClick={signOut}
