@@ -232,7 +232,7 @@ export default function AdminQuestions() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Topic</Label>
-              <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })} disabled={!!lockedCategory}>
+              <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select topic" />
                 </SelectTrigger>
