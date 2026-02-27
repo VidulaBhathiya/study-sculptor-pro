@@ -43,6 +43,10 @@ export default function AdminQuestions() {
   const [editId, setEditId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lockedCategory, setLockedCategory] = useState<string | null>(null);
+  const [showNewTopic, setShowNewTopic] = useState(false);
+  const [newTopicName, setNewTopicName] = useState("");
+  const [newTopicCategory, setNewTopicCategory] = useState("HTML");
+  const [savingTopic, setSavingTopic] = useState(false);
   const [form, setForm] = useState({
     question_text: "",
     option_a: "",
@@ -231,19 +235,79 @@ export default function AdminQuestions() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Topic</Label>
-              <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select topic" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label>Topic</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1"
+                  onClick={() => {
+                    setShowNewTopic(!showNewTopic);
+                    if (lockedCategory) setNewTopicCategory(lockedCategory);
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                  {showNewTopic ? "Cancel" : "New Topic"}
+                </Button>
+              </div>
+              {showNewTopic ? (
+                <div className="space-y-2 rounded-lg border p-3 bg-muted/50">
+                  <Input
+                    placeholder="Topic name (e.g. Flexbox)"
+                    value={newTopicName}
+                    onChange={(e) => setNewTopicName(e.target.value)}
+                  />
+                  <Select value={newTopicCategory} onValueChange={setNewTopicCategory} disabled={!!lockedCategory}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["HTML", "CSS", "javascript"].map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!newTopicName.trim() || savingTopic}
+                    onClick={async () => {
+                      setSavingTopic(true);
+                      const { data, error } = await supabase
+                        .from("topics")
+                        .insert({ name: newTopicName.trim(), category: newTopicCategory })
+                        .select()
+                        .single();
+                      if (error) {
+                        toast.error(error.message);
+                      } else if (data) {
+                        toast.success("Topic created");
+                        setForm((f) => ({ ...f, topic_id: data.id }));
+                        setNewTopicName("");
+                        setShowNewTopic(false);
+                        await fetchData();
+                      }
+                      setSavingTopic(false);
+                    }}
+                  >
+                    {savingTopic ? "Creating..." : "Create Topic"}
+                  </Button>
+                </div>
+              ) : (
+                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Question Text</Label>
