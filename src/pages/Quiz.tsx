@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, ArrowRight, Trophy, Code2, BookOpen, Zap } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowRight, Trophy, Code2, Palette, Zap } from "lucide-react";
 
 interface Question {
   id: string;
@@ -216,39 +216,51 @@ export default function Quiz() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-5">
-            <Card className="shadow-card text-center">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                <div className="h-14 w-14 rounded-xl bg-accent/20 flex items-center justify-center">
-                  <Code2 className="h-7 w-7 text-accent-foreground" />
+            <Card className="group relative overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300 hover:scale-105 text-center border-0 bg-gradient-to-br from-orange-500/10 via-red-500/5 to-transparent">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 opacity-0 group-hover:opacity-[0.07] transition-opacity duration-300" />
+              <CardContent className="relative pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
+                  <Code2 className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="font-display font-semibold text-lg">HTML</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Structure & semantics — headings, forms, tables, and accessibility basics.
                 </p>
+                <Button variant="outline" size="sm" className="mt-2 border-orange-500/30 text-orange-600 hover:bg-orange-500/10" onClick={() => setStarted(true)}>
+                  Start HTML Quiz
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card text-center">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                <div className="h-14 w-14 rounded-xl bg-secondary/20 flex items-center justify-center">
-                  <BookOpen className="h-7 w-7 text-secondary-foreground" />
+            <Card className="group relative overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300 hover:scale-105 text-center border-0 bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-[0.07] transition-opacity duration-300" />
+              <CardContent className="relative pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+                  <Palette className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="font-display font-semibold text-lg">CSS</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Layout & styling — flexbox, grid, responsive design, and animations.
                 </p>
+                <Button variant="outline" size="sm" className="mt-2 border-blue-500/30 text-blue-600 hover:bg-blue-500/10" onClick={() => setStarted(true)}>
+                  Start CSS Quiz
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card text-center">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                <div className="h-14 w-14 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <Zap className="h-7 w-7 text-primary-foreground" />
+            <Card className="group relative overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300 hover:scale-105 text-center border-0 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-0 group-hover:opacity-[0.07] transition-opacity duration-300" />
+              <CardContent className="relative pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-lg">
+                  <Zap className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="font-display font-semibold text-lg">JavaScript</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Logic & interactivity — variables, functions, DOM manipulation, and async.
                 </p>
+                <Button variant="outline" size="sm" className="mt-2 border-violet-500/30 text-violet-600 hover:bg-violet-500/10" onClick={() => setStarted(true)}>
+                  Start JavaScript Quiz
+                </Button>
               </CardContent>
             </Card>
           </div>
