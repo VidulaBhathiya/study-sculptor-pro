@@ -10,17 +10,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Code2, Palette, Server } from "lucide-react";
 
-interface Topic { id: string; name: string; category: string; }
+interface Topic {
+  id: string;
+  name: string;
+  category: string;
+}
 interface Question {
-  id: string; question_text: string; option_a: string; option_b: string;
-  option_c: string; option_d: string; correct_option: string; difficulty: string;
-  topic_id: string; topic?: Topic;
+  id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: string;
+  difficulty: string;
+  topic_id: string;
+  topic?: Topic;
 }
 
 const categoryConfig: Record<string, { icon: any; gradient: string; border: string }> = {
   HTML: { icon: Code2, gradient: "from-orange-500 to-red-500", border: "border-orange-500/30" },
   CSS: { icon: Palette, gradient: "from-blue-500 to-cyan-500", border: "border-blue-500/30" },
-  PHP: { icon: Server, gradient: "from-violet-500 to-purple-500", border: "border-violet-500/30" },
+  javascript: { icon: Server, gradient: "from-violet-500 to-purple-500", border: "border-violet-500/30" },
 };
 
 export default function AdminQuestions() {
@@ -32,15 +43,26 @@ export default function AdminQuestions() {
   const [editId, setEditId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [form, setForm] = useState({
-    question_text: "", option_a: "", option_b: "", option_c: "", option_d: "",
-    correct_option: "a", difficulty: "medium", topic_id: "",
+    question_text: "",
+    option_a: "",
+    option_b: "",
+    option_c: "",
+    option_d: "",
+    correct_option: "a",
+    difficulty: "medium",
+    topic_id: "",
   });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     const [{ data: qs }, { data: ts }] = await Promise.all([
-      supabase.from("quiz_questions").select("*, topic:topics(id, name, category)").order("created_at", { ascending: false }),
+      supabase
+        .from("quiz_questions")
+        .select("*, topic:topics(id, name, category)")
+        .order("created_at", { ascending: false }),
       supabase.from("topics").select("*").order("name"),
     ]);
     setQuestions((qs as unknown as Question[]) || []);
@@ -49,39 +71,70 @@ export default function AdminQuestions() {
   };
 
   const resetForm = () => {
-    setForm({ question_text: "", option_a: "", option_b: "", option_c: "", option_d: "", correct_option: "a", difficulty: "medium", topic_id: "" });
+    setForm({
+      question_text: "",
+      option_a: "",
+      option_b: "",
+      option_c: "",
+      option_d: "",
+      correct_option: "a",
+      difficulty: "medium",
+      topic_id: "",
+    });
     setEditId(null);
   };
 
   const handleSave = async () => {
-    if (!form.question_text || !form.topic_id) { toast.error("Fill in required fields"); return; }
+    if (!form.question_text || !form.topic_id) {
+      toast.error("Fill in required fields");
+      return;
+    }
     setSaving(true);
     if (editId) {
       const { error } = await supabase.from("quiz_questions").update(form).eq("id", editId);
-      if (error) toast.error(error.message); else toast.success("Question updated");
+      if (error) toast.error(error.message);
+      else toast.success("Question updated");
     } else {
       const { error } = await supabase.from("quiz_questions").insert(form);
-      if (error) toast.error(error.message); else toast.success("Question added");
+      if (error) toast.error(error.message);
+      else toast.success("Question added");
     }
-    setSaving(false); setDialogOpen(false); resetForm(); fetchData();
+    setSaving(false);
+    setDialogOpen(false);
+    resetForm();
+    fetchData();
   };
 
   const handleEdit = (q: Question) => {
     setForm({
-      question_text: q.question_text, option_a: q.option_a, option_b: q.option_b,
-      option_c: q.option_c, option_d: q.option_d, correct_option: q.correct_option,
-      difficulty: q.difficulty || "medium", topic_id: q.topic_id,
+      question_text: q.question_text,
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c,
+      option_d: q.option_d,
+      correct_option: q.correct_option,
+      difficulty: q.difficulty || "medium",
+      topic_id: q.topic_id,
     });
-    setEditId(q.id); setDialogOpen(true);
+    setEditId(q.id);
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("quiz_questions").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Deleted"); fetchData(); }
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Deleted");
+      fetchData();
+    }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" /></div>;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
+      </div>
+    );
   }
 
   // Count questions per category
@@ -91,15 +144,13 @@ export default function AdminQuestions() {
     categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
   });
 
-  const filteredQuestions = activeCategory
-    ? questions.filter((q) => q.topic?.category === activeCategory)
-    : questions;
+  const filteredQuestions = activeCategory ? questions.filter((q) => q.topic?.category === activeCategory) : questions;
 
   return (
     <div className="space-y-6">
       {/* Category Filter Boxes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {["HTML", "CSS", "PHP"].map((cat) => {
+        {["HTML", "CSS", "javascript"].map((cat) => {
           const config = categoryConfig[cat];
           const count = categoryCounts[cat] || 0;
           const isActive = activeCategory === cat;
@@ -110,7 +161,9 @@ export default function AdminQuestions() {
               key={cat}
               onClick={() => setActiveCategory(isActive ? null : cat)}
               className={`text-left transition-all rounded-xl overflow-hidden ${
-                isActive ? "ring-2 ring-offset-2 ring-offset-background ring-primary scale-[1.02]" : "hover:scale-[1.01]"
+                isActive
+                  ? "ring-2 ring-offset-2 ring-offset-background ring-primary scale-[1.02]"
+                  : "hover:scale-[1.01]"
               }`}
             >
               <Card className={`border-0 shadow-card overflow-hidden ${isActive ? "shadow-elevated" : ""}`}>
@@ -133,11 +186,22 @@ export default function AdminQuestions() {
       {/* Header with count and add button */}
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground">
-          {activeCategory ? `${filteredQuestions.length} ${activeCategory} questions` : `${questions.length} questions total`}
+          {activeCategory
+            ? `${filteredQuestions.length} ${activeCategory} questions`
+            : `${questions.length} questions total`}
         </p>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
-            <Button variant="hero"><Plus className="h-4 w-4 mr-2" />Add Question</Button>
+            <Button variant="hero">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Question
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -147,33 +211,64 @@ export default function AdminQuestions() {
               <div className="space-y-2">
                 <Label>Topic</Label>
                 <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select topic" /></SelectTrigger>
-                  <SelectContent>{topics.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.category})</SelectItem>)}</SelectContent>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.category})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Question Text</Label>
-                <Textarea value={form.question_text} onChange={(e) => setForm({ ...form, question_text: e.target.value })} rows={3} />
+                <Textarea
+                  value={form.question_text}
+                  onChange={(e) => setForm({ ...form, question_text: e.target.value })}
+                  rows={3}
+                />
               </div>
               {(["a", "b", "c", "d"] as const).map((opt) => (
                 <div key={opt} className="space-y-2">
                   <Label>Option {opt.toUpperCase()}</Label>
-                  <Input value={form[`option_${opt}`]} onChange={(e) => setForm({ ...form, [`option_${opt}`]: e.target.value })} />
+                  <Input
+                    value={form[`option_${opt}`]}
+                    onChange={(e) => setForm({ ...form, [`option_${opt}`]: e.target.value })}
+                  />
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Correct Answer</Label>
                   <Select value={form.correct_option} onValueChange={(v) => setForm({ ...form, correct_option: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{["a", "b", "c", "d"].map((o) => <SelectItem key={o} value={o}>Option {o.toUpperCase()}</SelectItem>)}</SelectContent>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["a", "b", "c", "d"].map((o) => (
+                        <SelectItem key={o} value={o}>
+                          Option {o.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Difficulty</Label>
                   <Select value={form.difficulty} onValueChange={(v) => setForm({ ...form, difficulty: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{["easy", "medium", "hard"].map((d) => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}</SelectContent>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["easy", "medium", "hard"].map((d) => (
+                        <SelectItem key={d} value={d} className="capitalize">
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>
@@ -195,24 +290,33 @@ export default function AdminQuestions() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm mb-1">{q.question_text}</p>
                   <div className="flex gap-2 text-xs text-muted-foreground">
-                    <span className="font-semibold">{q.topic?.category}</span><span>•</span>
-                    <span>{q.topic?.name}</span><span>•</span>
-                    <span className="capitalize">{q.difficulty}</span><span>•</span>
+                    <span className="font-semibold">{q.topic?.category}</span>
+                    <span>•</span>
+                    <span>{q.topic?.name}</span>
+                    <span>•</span>
+                    <span className="capitalize">{q.difficulty}</span>
+                    <span>•</span>
                     <span>Answer: {q.correct_option.toUpperCase()}</span>
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}><Edit className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(q.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(q)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(q.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           );
         })}
         {filteredQuestions.length === 0 && (
-          <Card className="shadow-card"><CardContent className="py-12 text-center text-muted-foreground">
-            {activeCategory ? `No ${activeCategory} questions yet.` : "No questions yet. Add your first question!"}
-          </CardContent></Card>
+          <Card className="shadow-card">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              {activeCategory ? `No ${activeCategory} questions yet.` : "No questions yet. Add your first question!"}
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
