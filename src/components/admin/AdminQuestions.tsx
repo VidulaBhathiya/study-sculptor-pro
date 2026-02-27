@@ -239,7 +239,7 @@ export default function AdminQuestions() {
                 <SelectContent>
                   {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.category}
+                      {t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
