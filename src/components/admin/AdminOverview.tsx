@@ -36,7 +36,7 @@ export default function AdminOverview() {
       const categoryConfig: Record<string, { icon: any; gradient: string }> = {
         HTML: { icon: Code2, gradient: "from-orange-500 to-red-500" },
         CSS: { icon: Palette, gradient: "from-blue-500 to-cyan-500" },
-        PHP: { icon: Server, gradient: "from-violet-500 to-purple-500" },
+        JavaScript: { icon: Server, gradient: "from-violet-500 to-purple-500" },
       };
 
       const topicsByCategory: Record<string, string[]> = {};
@@ -45,7 +45,7 @@ export default function AdminOverview() {
         topicsByCategory[t.category].push(t.id);
       });
 
-      const cats: CategoryStats[] = ["HTML", "CSS", "PHP"].map((cat) => {
+      const cats: CategoryStats[] = ["HTML", "CSS", "JavaScript"].map((cat) => {
         const topicIds = topicsByCategory[cat] || [];
         const qCount = (allQuestions || []).filter((q: any) => topicIds.includes(q.topic_id)).length;
         return {
