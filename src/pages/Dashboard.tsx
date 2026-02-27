@@ -110,17 +110,23 @@ export default function Dashboard() {
             <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
           </div>
         ) : !hasTakenQuiz ? (
-          <div className="flex flex-col items-center space-y-8">
-            <div className="text-center max-w-lg">
-              <h2 className="text-2xl font-display font-bold mb-2">Welcome to CodePath</h2>
-              <p className="text-muted-foreground">
-                Take the placement quiz to assess your HTML, CSS, and JavaScript skills. We'll build a personalized learning path just for you.
-              </p>
-            </div>
-
-            <Button variant="hero" size="lg" className="px-10 text-base" asChild>
-              <Link to="/quiz">Start Placement Quiz</Link>
-            </Button>
+          <div className="flex items-center justify-center py-16">
+            <Card className="shadow-card max-w-md w-full text-center p-8 space-y-6">
+              <CardContent className="p-0 space-y-4">
+                <h2 className="text-2xl font-display font-bold">Welcome to CodePath</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Take the placement quiz to assess your HTML, CSS, and JavaScript skills. We'll build a personalized learning path just for you.
+                </p>
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="px-10 text-base transition-transform duration-200 hover:scale-105"
+                  asChild
+                >
+                  <Link to="/quiz">Start Placement Quiz</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <>
