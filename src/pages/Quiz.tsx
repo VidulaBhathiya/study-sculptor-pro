@@ -34,38 +34,33 @@ export default function Quiz() {
   const [started, setStarted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (started) {
-      setLoading(true);
-      fetchQuestions();
-    }
-  }, [started, selectedCategory]);
+  const startQuiz = (category: string) => {
+    setSelectedCategory(category);
+    setStarted(true);
+    setLoading(true);
+    fetchQuestions(category);
+  };
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = async (category: string) => {
     // First get topics to filter by category
     let topicIds: string[] | null = null;
-    if (selectedCategory) {
-      const { data: topics } = await supabase
-        .from("topics")
-        .select("id")
-        .ilike("category", selectedCategory);
-      topicIds = topics?.map((t) => t.id) || [];
-      if (topicIds.length === 0) {
-        toast.error(`No ${selectedCategory} questions available yet.`);
-        setLoading(false);
-        setStarted(false);
-        return;
-      }
+    const { data: topics } = await supabase
+      .from("topics")
+      .select("id")
+      .ilike("category", category);
+    topicIds = topics?.map((t) => t.id) || [];
+    if (topicIds.length === 0) {
+      toast.error(`No ${category} questions available yet.`);
+      setLoading(false);
+      setStarted(false);
+      return;
     }
 
     let query = supabase
       .from("quiz_questions_public" as any)
       .select("*")
+      .in("topic_id", topicIds)
       .order("created_at");
-
-    if (topicIds) {
-      query = query.in("topic_id", topicIds);
-    }
 
     const { data, error } = await query;
 
@@ -249,7 +244,7 @@ export default function Quiz() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Structure & semantics — headings, forms, tables, and accessibility basics.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2 border-orange-500/30 text-orange-600 hover:bg-orange-500/10" onClick={() => { setSelectedCategory("HTML"); setStarted(true); }}>
+                <Button variant="outline" size="sm" className="mt-2 border-orange-500/30 text-orange-600 hover:bg-orange-500/10" onClick={() => startQuiz("HTML")}>
                   Start HTML Quiz
                 </Button>
               </CardContent>
@@ -265,7 +260,7 @@ export default function Quiz() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Layout & styling — flexbox, grid, responsive design, and animations.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2 border-blue-500/30 text-blue-600 hover:bg-blue-500/10" onClick={() => { setSelectedCategory("CSS"); setStarted(true); }}>
+                <Button variant="outline" size="sm" className="mt-2 border-blue-500/30 text-blue-600 hover:bg-blue-500/10" onClick={() => startQuiz("CSS")}>
                   Start CSS Quiz
                 </Button>
               </CardContent>
@@ -281,7 +276,7 @@ export default function Quiz() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Logic & interactivity — variables, functions, DOM manipulation, and async.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2 border-violet-500/30 text-violet-600 hover:bg-violet-500/10" onClick={() => { setSelectedCategory("JavaScript"); setStarted(true); }}>
+                <Button variant="outline" size="sm" className="mt-2 border-violet-500/30 text-violet-600 hover:bg-violet-500/10" onClick={() => startQuiz("JavaScript")}>
                   Start JavaScript Quiz
                 </Button>
               </CardContent>
