@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, ArrowRight, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowRight, Trophy, Code2, BookOpen, Zap } from "lucide-react";
 
 interface Question {
   id: string;
@@ -29,12 +29,16 @@ export default function Quiz() {
   const [showResult, setShowResult] = useState(false);
   const [answers, setAnswers] = useState<{ questionId: string; selected: string; correct: boolean }[]>([]);
   const [quizComplete, setQuizComplete] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
-    fetchQuestions();
-  }, []);
+    if (started) {
+      setLoading(true);
+      fetchQuestions();
+    }
+  }, [started]);
 
   const fetchQuestions = async () => {
     const { data, error } = await supabase
@@ -193,6 +197,65 @@ export default function Quiz() {
             </Button>
             <Button variant="secondary" asChild>
               <a href="/recommendations">View Resources</a>
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!started) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-3xl mx-auto space-y-8 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-display font-bold">Placement Quiz</h1>
+            <p className="text-muted-foreground mt-2">
+              We'll assess your skills in these three core areas to build a personalized learning path.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            <Card className="shadow-card text-center">
+              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-accent/20 flex items-center justify-center">
+                  <Code2 className="h-7 w-7 text-accent-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-lg">HTML</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Structure & semantics — headings, forms, tables, and accessibility basics.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card text-center">
+              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-secondary/20 flex items-center justify-center">
+                  <BookOpen className="h-7 w-7 text-secondary-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-lg">CSS</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Layout & styling — flexbox, grid, responsive design, and animations.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-card text-center">
+              <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
+                <div className="h-14 w-14 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Zap className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <h3 className="font-display font-semibold text-lg">JavaScript</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Logic & interactivity — variables, functions, DOM manipulation, and async.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="text-center">
+            <Button variant="hero" size="lg" className="px-10 text-base" onClick={() => setStarted(true)}>
+              Begin Quiz
             </Button>
           </div>
         </div>
