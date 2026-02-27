@@ -42,6 +42,7 @@ export default function AdminQuestions() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [lockedCategory, setLockedCategory] = useState<string | null>(null);
   const [form, setForm] = useState({
     question_text: "",
     option_a: "",
@@ -82,6 +83,18 @@ export default function AdminQuestions() {
       topic_id: "",
     });
     setEditId(null);
+    setLockedCategory(null);
+  };
+
+  const handleAddForCategory = (category: string) => {
+    resetForm();
+    setLockedCategory(category);
+    // Pre-select first topic in this category
+    const firstTopic = topics.find((t) => t.category === category);
+    if (firstTopic) {
+      setForm((f) => ({ ...f, topic_id: firstTopic.id }));
+    }
+    setDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -176,6 +189,18 @@ export default function AdminQuestions() {
                   <p className="text-xs opacity-80 mt-0.5">
                     {count} question{count !== 1 ? "s" : ""} • Click to {isActive ? "show all" : "filter"}
                   </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-3 w-full bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddForCategory(cat);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Add {cat} Question
+                  </Button>
                 </div>
               </Card>
             </button>
@@ -210,12 +235,12 @@ export default function AdminQuestions() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Topic</Label>
-                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
+                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })} disabled={!!lockedCategory}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select topic" />
                   </SelectTrigger>
                   <SelectContent>
-                    {topics.map((t) => (
+                    {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name} ({t.category})
                       </SelectItem>
