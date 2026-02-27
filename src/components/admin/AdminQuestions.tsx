@@ -295,18 +295,42 @@ export default function AdminQuestions() {
                   </Button>
                 </div>
               ) : (
-                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select topic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
+                    <div
+                      key={t.id}
+                      className={`flex items-center justify-between rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
+                        form.topic_id === t.id
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-muted"
+                      }`}
+                      onClick={() => setForm({ ...form, topic_id: t.id })}
+                    >
+                      <span>{t.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const { error } = await supabase.from("topics").delete().eq("id", t.id);
+                          if (error) toast.error(error.message);
+                          else {
+                            toast.success("Topic deleted");
+                            if (form.topic_id === t.id) setForm((f) => ({ ...f, topic_id: "" }));
+                            fetchData();
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                  {topics.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">No topics yet</p>
+                  )}
+                </div>
               )}
             </div>
             <div className="space-y-2">
