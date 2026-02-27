@@ -208,102 +208,98 @@ export default function AdminQuestions() {
         })}
       </div>
 
-      {/* Header with count and add button */}
+      {/* Header with count */}
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground">
           {activeCategory
             ? `${filteredQuestions.length} ${activeCategory} questions`
             : `${questions.length} questions total`}
         </p>
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(o) => {
-            setDialogOpen(o);
-            if (!o) resetForm();
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button variant="hero">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Question
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-display">{editId ? "Edit" : "Add"} Question</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+      </div>
+
+      {/* Add/Edit Question Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) resetForm();
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">{editId ? "Edit" : "Add"} Question</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Topic</Label>
+              <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })} disabled={!!lockedCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select topic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Question Text</Label>
+              <Textarea
+                value={form.question_text}
+                onChange={(e) => setForm({ ...form, question_text: e.target.value })}
+                rows={3}
+              />
+            </div>
+            {(["a", "b", "c", "d"] as const).map((opt) => (
+              <div key={opt} className="space-y-2">
+                <Label>Option {opt.toUpperCase()}</Label>
+                <Input
+                  value={form[`option_${opt}`]}
+                  onChange={(e) => setForm({ ...form, [`option_${opt}`]: e.target.value })}
+                />
+              </div>
+            ))}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Topic</Label>
-                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })} disabled={!!lockedCategory}>
+                <Label>Correct Answer</Label>
+                <Select value={form.correct_option} onValueChange={(v) => setForm({ ...form, correct_option: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select topic" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} ({t.category})
+                    {["a", "b", "c", "d"].map((o) => (
+                      <SelectItem key={o} value={o}>
+                        Option {o.toUpperCase()}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Question Text</Label>
-                <Textarea
-                  value={form.question_text}
-                  onChange={(e) => setForm({ ...form, question_text: e.target.value })}
-                  rows={3}
-                />
+                <Label>Difficulty</Label>
+                <Select value={form.difficulty} onValueChange={(v) => setForm({ ...form, difficulty: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["easy", "medium", "hard"].map((d) => (
+                      <SelectItem key={d} value={d} className="capitalize">
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              {(["a", "b", "c", "d"] as const).map((opt) => (
-                <div key={opt} className="space-y-2">
-                  <Label>Option {opt.toUpperCase()}</Label>
-                  <Input
-                    value={form[`option_${opt}`]}
-                    onChange={(e) => setForm({ ...form, [`option_${opt}`]: e.target.value })}
-                  />
-                </div>
-              ))}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Correct Answer</Label>
-                  <Select value={form.correct_option} onValueChange={(v) => setForm({ ...form, correct_option: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["a", "b", "c", "d"].map((o) => (
-                        <SelectItem key={o} value={o}>
-                          Option {o.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Difficulty</Label>
-                  <Select value={form.difficulty} onValueChange={(v) => setForm({ ...form, difficulty: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["easy", "medium", "hard"].map((d) => (
-                        <SelectItem key={d} value={d} className="capitalize">
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full">
-                {saving ? "Saving..." : editId ? "Update Question" : "Add Question"}
-              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <Button onClick={handleSave} disabled={saving} className="w-full">
+              {saving ? "Saving..." : editId ? "Update Question" : "Add Question"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Question List */}
       <div className="space-y-3">
