@@ -38,7 +38,7 @@ export default function Quiz() {
 
   const fetchQuestions = async () => {
     const { data, error } = await supabase
-      .from("quiz_questions")
+      .from("quiz_questions_public" as any)
       .select("*")
       .order("created_at");
 
@@ -55,7 +55,7 @@ export default function Quiz() {
     }
 
     // Shuffle and take up to 20 questions
-    const shuffled = data.sort(() => Math.random() - 0.5).slice(0, 20);
+    const shuffled = (data as unknown as Question[]).sort(() => Math.random() - 0.5).slice(0, 20);
     setQuestions(shuffled);
     setLoading(false);
   };
@@ -65,12 +65,29 @@ export default function Quiz() {
     setSelected(option);
   };
 
-  const handleSubmitAnswer = () => {
+  const handleSubmitAnswer = async () => {
     if (!selected) return;
     const question = questions[currentIndex];
-    const correct = selected === question.correct_option;
-    setAnswers([...answers, { questionId: question.id, selected, correct }]);
-    setShowResult(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke("check-answer", {
+        body: { question_id: question.id, selected_option: selected },
+      });
+      
+      if (response.error) {
+        toast.error("Failed to check answer");
+        return;
+      }
+      
+      const { is_correct, correct_option } = response.data;
+      // Store correct_option temporarily for UI display
+      (question as any).correct_option = correct_option;
+      setAnswers([...answers, { questionId: question.id, selected, correct: is_correct }]);
+      setShowResult(true);
+    } catch (err) {
+      toast.error("Failed to check answer");
+    }
   };
 
   const handleNext = () => {
