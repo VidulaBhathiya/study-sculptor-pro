@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardCheck, BookOpen, Calendar, TrendingUp, AlertTriangle, Code2 } from "lucide-react";
+import { BookOpen, Calendar, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface TopicPerformance {
   topic_name: string;
@@ -114,46 +114,8 @@ export default function Dashboard() {
             <div className="text-center max-w-lg">
               <h2 className="text-2xl font-display font-bold mb-2">Welcome to CodePath</h2>
               <p className="text-muted-foreground">
-                We'll assess your skills in these three core areas to build a personalized learning path just for you.
+                Take the placement quiz to assess your HTML, CSS, and JavaScript skills. We'll build a personalized learning path just for you.
               </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-5 w-full max-w-3xl">
-              <Card className="shadow-card text-center">
-                <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                  <div className="h-14 w-14 rounded-xl bg-accent/20 flex items-center justify-center">
-                    <Code2 className="h-7 w-7 text-accent-foreground" />
-                  </div>
-                  <h3 className="font-display font-semibold text-lg">HTML</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Structure & semantics — headings, forms, tables, and accessibility basics.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card text-center">
-                <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                  <div className="h-14 w-14 rounded-xl bg-secondary/20 flex items-center justify-center">
-                    <BookOpen className="h-7 w-7 text-secondary-foreground" />
-                  </div>
-                  <h3 className="font-display font-semibold text-lg">CSS</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Layout & styling — flexbox, grid, responsive design, and animations.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card text-center">
-                <CardContent className="pt-8 pb-6 flex flex-col items-center gap-3">
-                  <div className="h-14 w-14 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <TrendingUp className="h-7 w-7 text-primary-foreground" />
-                  </div>
-                  <h3 className="font-display font-semibold text-lg">JavaScript</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Logic & interactivity — variables, functions, DOM manipulation, and async.
-                  </p>
-                </CardContent>
-              </Card>
             </div>
 
             <Button variant="hero" size="lg" className="px-10 text-base" asChild>
