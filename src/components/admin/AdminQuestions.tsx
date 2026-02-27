@@ -230,21 +230,23 @@ export default function AdminQuestions() {
             <DialogTitle className="font-display">{editId ? "Edit" : "Add"} Question</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Topic</Label>
-              <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })} disabled={!!lockedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select topic" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!lockedCategory && (
+              <div className="space-y-2">
+                <Label>Topic</Label>
+                <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Question Text</Label>
               <Textarea
