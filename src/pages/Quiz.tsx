@@ -48,7 +48,7 @@ export default function Quiz() {
       const { data: topics } = await supabase
         .from("topics")
         .select("id")
-        .eq("category", selectedCategory);
+        .ilike("category", selectedCategory);
       topicIds = topics?.map((t) => t.id) || [];
       if (topicIds.length === 0) {
         toast.error(`No ${selectedCategory} questions available yet.`);
