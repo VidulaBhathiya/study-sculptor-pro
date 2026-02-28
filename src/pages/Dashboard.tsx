@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,11 +88,7 @@ export default function Dashboard() {
   };
 
   if (role === "admin") {
-    return (
-      <DashboardLayout>
-        <AdminDashboard />
-      </DashboardLayout>
-    );
+    return <Navigate to="/admin" replace />;
   }
 
   return (
@@ -238,50 +234,3 @@ export default function Dashboard() {
   );
 }
 
-function AdminDashboard() {
-  const [stats, setStats] = useState({ users: 0, questions: 0, resources: 0 });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const [{ count: users }, { count: questions }, { count: resources }] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("quiz_questions").select("*", { count: "exact", head: true }),
-        supabase.from("learning_resources").select("*", { count: "exact", head: true }),
-      ]);
-      setStats({
-        users: users || 0,
-        questions: questions || 0,
-        resources: resources || 0,
-      });
-    };
-    fetchStats();
-  }, []);
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-display font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Manage your learning platform</p>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        {[
-          { label: "Total Users", value: stats.users, link: "/admin/users" },
-          { label: "Quiz Questions", value: stats.questions, link: "/admin/questions" },
-          { label: "Learning Resources", value: stats.resources, link: "/admin/resources" },
-        ].map((stat) => (
-          <Link key={stat.label} to={stat.link}>
-            <Card className="shadow-card hover:shadow-elevated transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-display font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
