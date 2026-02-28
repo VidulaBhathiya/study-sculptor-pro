@@ -23,7 +23,6 @@ const userLinks = [
 ];
 
 const adminLinks = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin", icon: Settings, label: "Admin Panel" },
 ];
 
