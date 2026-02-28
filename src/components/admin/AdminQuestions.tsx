@@ -43,10 +43,6 @@ export default function AdminQuestions() {
   const [editId, setEditId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lockedCategory, setLockedCategory] = useState<string | null>(null);
-  const [showNewTopic, setShowNewTopic] = useState(false);
-  const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicCategory, setNewTopicCategory] = useState("HTML");
-  const [savingTopic, setSavingTopic] = useState(false);
   const [form, setForm] = useState({
     question_text: "",
     option_a: "",
@@ -55,7 +51,7 @@ export default function AdminQuestions() {
     option_d: "",
     correct_option: "a",
     difficulty: "medium",
-    topic_id: "",
+    topic_name: "",
   });
 
   useEffect(() => {
@@ -84,7 +80,7 @@ export default function AdminQuestions() {
       option_d: "",
       correct_option: "a",
       difficulty: "medium",
-      topic_id: "",
+      topic_name: "",
     });
     setEditId(null);
     setLockedCategory(null);
@@ -93,26 +89,55 @@ export default function AdminQuestions() {
   const handleAddForCategory = (category: string) => {
     resetForm();
     setLockedCategory(category);
-    // Pre-select first topic in this category
-    const firstTopic = topics.find((t) => t.category === category);
-    if (firstTopic) {
-      setForm((f) => ({ ...f, topic_id: firstTopic.id }));
-    }
     setDialogOpen(true);
   };
 
+  const resolveTopicId = async (topicName: string, category: string): Promise<string | null> => {
+    const trimmed = topicName.trim();
+    // Check if topic already exists (case-insensitive)
+    const existing = topics.find((t) => t.name.toLowerCase() === trimmed.toLowerCase() && t.category === category);
+    if (existing) return existing.id;
+    // Create new topic
+    const { data, error } = await supabase
+      .from("topics")
+      .insert({ name: trimmed, category })
+      .select()
+      .single();
+    if (error) {
+      toast.error("Failed to create topic: " + error.message);
+      return null;
+    }
+    return data.id;
+  };
+
   const handleSave = async () => {
-    if (!form.question_text || !form.topic_id) {
+    if (!form.question_text || !form.topic_name.trim()) {
       toast.error("Fill in required fields");
       return;
     }
     setSaving(true);
+    const category = lockedCategory || "HTML";
+    const topicId = await resolveTopicId(form.topic_name, category);
+    if (!topicId) {
+      setSaving(false);
+      return;
+    }
+    const payload = {
+      question_text: form.question_text,
+      option_a: form.option_a,
+      option_b: form.option_b,
+      option_c: form.option_c,
+      option_d: form.option_d,
+      correct_option: form.correct_option,
+      difficulty: form.difficulty,
+      topic_id: topicId,
+    };
     if (editId) {
-      const { error } = await supabase.from("quiz_questions").update(form).eq("id", editId);
+      const { error } = await supabase.from("quiz_questions").update(payload).eq("id", editId);
       if (error) toast.error(error.message);
       else toast.success("Question updated");
     } else {
-      const { error } = await supabase.from("quiz_questions").insert(form);
+      const { error } = await supabase.from("quiz_questions").insert(payload);
       if (error) toast.error(error.message);
       else toast.success("Question added");
     }
@@ -131,8 +156,9 @@ export default function AdminQuestions() {
       option_d: q.option_d,
       correct_option: q.correct_option,
       difficulty: q.difficulty || "medium",
-      topic_id: q.topic_id,
+      topic_name: q.topic?.name || "",
     });
+    setLockedCategory(q.topic?.category || null);
     setEditId(q.id);
     setDialogOpen(true);
   };
@@ -235,103 +261,15 @@ export default function AdminQuestions() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Topic</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs gap-1"
-                  onClick={() => {
-                    setShowNewTopic(!showNewTopic);
-                    if (lockedCategory) setNewTopicCategory(lockedCategory);
-                  }}
-                >
-                  <Plus className="h-3 w-3" />
-                  {showNewTopic ? "Cancel" : "New Topic"}
-                </Button>
-              </div>
-              {showNewTopic ? (
-                <div className="space-y-2 rounded-lg border p-3 bg-muted/50">
-                  <Input
-                    placeholder="Topic name (e.g. Flexbox)"
-                    value={newTopicName}
-                    onChange={(e) => setNewTopicName(e.target.value)}
-                  />
-                  <Select value={newTopicCategory} onValueChange={setNewTopicCategory} disabled={!!lockedCategory}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["HTML", "CSS", "javascript"].map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    disabled={!newTopicName.trim() || savingTopic}
-                    onClick={async () => {
-                      setSavingTopic(true);
-                      const { data, error } = await supabase
-                        .from("topics")
-                        .insert({ name: newTopicName.trim(), category: newTopicCategory })
-                        .select()
-                        .single();
-                      if (error) {
-                        toast.error(error.message);
-                      } else if (data) {
-                        toast.success("Topic created");
-                        setForm((f) => ({ ...f, topic_id: data.id }));
-                        setNewTopicName("");
-                        setShowNewTopic(false);
-                        await fetchData();
-                      }
-                      setSavingTopic(false);
-                    }}
-                  >
-                    {savingTopic ? "Creating..." : "Create Topic"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {(lockedCategory ? topics.filter((t) => t.category === lockedCategory) : topics).map((t) => (
-                    <div
-                      key={t.id}
-                      className={`flex items-center justify-between rounded-md px-3 py-2 text-sm cursor-pointer transition-colors ${
-                        form.topic_id === t.id
-                          ? "bg-accent text-accent-foreground"
-                          : "hover:bg-muted"
-                      }`}
-                      onClick={() => setForm({ ...form, topic_id: t.id })}
-                    >
-                      <span>{t.name}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const { error } = await supabase.from("topics").delete().eq("id", t.id);
-                          if (error) toast.error(error.message);
-                          else {
-                            toast.success("Topic deleted");
-                            if (form.topic_id === t.id) setForm((f) => ({ ...f, topic_id: "" }));
-                            fetchData();
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                  {topics.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">No topics yet</p>
-                  )}
-                </div>
-              )}
+              <Label>Topic Name</Label>
+              <Input
+                placeholder="Type a topic name (e.g. Flexbox, Selectors...)"
+                value={form.topic_name}
+                onChange={(e) => setForm({ ...form, topic_name: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Type an existing topic or a new one — it will be created automatically.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Question Text</Label>

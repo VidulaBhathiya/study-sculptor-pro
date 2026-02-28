@@ -46,7 +46,7 @@ export default function ManageQuestions() {
     option_d: "",
     correct_option: "a",
     difficulty: "medium",
-    topic_id: "",
+    topic_name: "",
   });
 
   useEffect(() => {
@@ -64,27 +64,41 @@ export default function ManageQuestions() {
   };
 
   const resetForm = () => {
-    setForm({ question_text: "", option_a: "", option_b: "", option_c: "", option_d: "", correct_option: "a", difficulty: "medium", topic_id: "" });
+    setForm({ question_text: "", option_a: "", option_b: "", option_c: "", option_d: "", correct_option: "a", difficulty: "medium", topic_name: "" });
     setEditId(null);
   };
 
+  const resolveTopicId = async (topicName: string): Promise<string | null> => {
+    const trimmed = topicName.trim();
+    const existing = topics.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) return existing.id;
+    const { data, error } = await supabase.from("topics").insert({ name: trimmed, category: "general" }).select().single();
+    if (error) { toast.error("Failed to create topic: " + error.message); return null; }
+    return data.id;
+  };
+
   const handleSave = async () => {
-    if (!form.question_text || !form.topic_id) {
+    if (!form.question_text || !form.topic_name.trim()) {
       toast.error("Fill in required fields");
       return;
     }
     setSaving(true);
-
+    const topicId = await resolveTopicId(form.topic_name);
+    if (!topicId) { setSaving(false); return; }
+    const payload = {
+      question_text: form.question_text, option_a: form.option_a, option_b: form.option_b,
+      option_c: form.option_c, option_d: form.option_d, correct_option: form.correct_option,
+      difficulty: form.difficulty, topic_id: topicId,
+    };
     if (editId) {
-      const { error } = await supabase.from("quiz_questions").update(form).eq("id", editId);
+      const { error } = await supabase.from("quiz_questions").update(payload).eq("id", editId);
       if (error) toast.error(error.message);
       else toast.success("Question updated");
     } else {
-      const { error } = await supabase.from("quiz_questions").insert(form);
+      const { error } = await supabase.from("quiz_questions").insert(payload);
       if (error) toast.error(error.message);
       else toast.success("Question added");
     }
-
     setSaving(false);
     setDialogOpen(false);
     resetForm();
@@ -100,7 +114,7 @@ export default function ManageQuestions() {
       option_d: q.option_d,
       correct_option: q.correct_option,
       difficulty: q.difficulty || "medium",
-      topic_id: q.topic_id,
+      topic_name: q.topic?.name || "",
     });
     setEditId(q.id);
     setDialogOpen(true);
@@ -133,15 +147,13 @@ export default function ManageQuestions() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Topic</Label>
-                  <Select value={form.topic_id} onValueChange={(v) => setForm({ ...form, topic_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select topic" /></SelectTrigger>
-                    <SelectContent>
-                      {topics.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.name} ({t.category})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Topic Name</Label>
+                  <Input
+                    placeholder="Type a topic name (e.g. Flexbox)"
+                    value={form.topic_name}
+                    onChange={(e) => setForm({ ...form, topic_name: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Type an existing or new topic name.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Question Text</Label>
