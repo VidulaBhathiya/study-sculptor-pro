@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, Video, FileText, BookOpen, Newspaper } from "lucide-react";
+import { ExternalLink, Video, FileText, BookOpen, Newspaper, Calendar } from "lucide-react";
 
 const typeIcons: Record<string, any> = {
   video: Video,
@@ -79,6 +80,23 @@ export default function Recommendations() {
             Curated learning materials based on your quiz performance
           </p>
         </div>
+
+        <Card className="shadow-card border-dashed border-2 border-secondary/30 bg-secondary/5">
+          <CardContent className="flex items-center justify-between py-6 gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                <Calendar className="h-6 w-6 text-secondary-foreground" />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold">Generate Your Study Plan</h3>
+                <p className="text-sm text-muted-foreground">Create a personalized schedule based on your weak areas and availability</p>
+              </div>
+            </div>
+            <Button variant="hero" size="lg" className="shrink-0" asChild>
+              <Link to="/study-plan">Generate Study Plan</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
