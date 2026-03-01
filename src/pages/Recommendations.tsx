@@ -97,7 +97,7 @@ export default function Recommendations() {
           Object.entries(grouped).map(([category, recs]) => (
             <div key={category}>
               <h2 className="text-xl font-display font-semibold mb-4">{category}</h2>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {recs.map((rec) => {
                   const Icon = typeIcons[rec.resource?.resource_type] || BookOpen;
                   return (
