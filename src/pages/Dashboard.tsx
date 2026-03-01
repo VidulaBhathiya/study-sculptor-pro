@@ -93,7 +93,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-10">
         <div>
           <h1 className="text-3xl font-display font-bold">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
@@ -127,7 +127,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Score summary cards */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               <Card className="shadow-card">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Quiz Score</CardTitle>
@@ -199,7 +199,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Quick Actions */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-5">
               <Card className="shadow-card hover:shadow-elevated transition-shadow cursor-pointer">
                 <Link to="/recommendations">
                   <CardContent className="flex items-center gap-4 py-6">
