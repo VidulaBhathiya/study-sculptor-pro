@@ -66,7 +66,7 @@ export default function Dashboard() {
       if (answers && answers.length > 0) {
         const questionIds = answers.map((a) => a.question_id);
         const { data: questions } = await supabase
-          .from("quiz_questions")
+          .from("quiz_questions_public")
           .select("id, topic_id")
           .in("id", questionIds);
 
