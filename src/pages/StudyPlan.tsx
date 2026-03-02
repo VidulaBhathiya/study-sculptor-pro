@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, Clock, CheckCircle2, Plus } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, Plus, Sparkles } from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -91,98 +91,33 @@ export default function StudyPlan() {
 
     setCreating(true);
 
-    // Get weak topics from recommendations
-    const { data: recs } = await supabase
-      .from("resource_recommendations")
-      .select("topic_id, resource_id")
-      .eq("user_id", user.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-study-plan", {
+        body: {
+          hours_per_day: parseFloat(hoursPerDay),
+          preferred_days: selectedDays,
+        },
+      });
 
-    if (!recs || recs.length === 0) {
-      // If no recommendations, get all topics
-      const { data: topics } = await supabase.from("topics").select("id");
-      if (!topics || topics.length === 0) {
-        toast.error("No topics available to create a study plan");
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
         setCreating(false);
         return;
       }
-    }
 
-    // Create plan
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 28); // 4 weeks
-
-    const { data: newPlan, error } = await supabase
-      .from("study_plans")
-      .insert({
-        user_id: user.id,
-        name: "My Study Plan",
-        hours_per_day: parseFloat(hoursPerDay),
-        preferred_days: selectedDays,
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
-      })
-      .select()
-      .single();
-
-    if (error || !newPlan) {
-      toast.error("Failed to create study plan");
+      toast.success(`AI study plan generated with ${data.items_count} sessions!`);
+      setShowForm(false);
+      fetchPlan();
+    } catch (e: any) {
+      console.error("Error generating plan:", e);
+      toast.error(e?.message || "Failed to generate study plan");
+    } finally {
       setCreating(false);
-      return;
     }
-
-    // Generate items: distribute resources across preferred days
-    const items: any[] = [];
-    const topicResourceMap: Record<string, string[]> = {};
-
-    if (recs && recs.length > 0) {
-      for (const rec of recs) {
-        if (!topicResourceMap[rec.topic_id]) topicResourceMap[rec.topic_id] = [];
-        topicResourceMap[rec.topic_id].push(rec.resource_id);
-      }
-    } else {
-      const { data: topics } = await supabase.from("topics").select("id");
-      for (const t of topics || []) {
-        topicResourceMap[t.id] = [];
-      }
-    }
-
-    const topicIds = Object.keys(topicResourceMap);
-    let dayIndex = 0;
-    const minutesPerDay = parseFloat(hoursPerDay) * 60;
-
-    for (let week = 0; week < 4; week++) {
-      for (const dayName of selectedDays) {
-        const dayNum = DAYS.indexOf(dayName);
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + week * 7 + dayNum);
-
-        if (date < startDate) continue;
-
-        const topicId = topicIds[dayIndex % topicIds.length];
-        const resourceIds = topicResourceMap[topicId] || [];
-        const resourceId = resourceIds.length > 0 ? resourceIds[dayIndex % resourceIds.length] : null;
-
-        items.push({
-          plan_id: newPlan.id,
-          topic_id: topicId,
-          resource_id: resourceId,
-          scheduled_date: date.toISOString().split("T")[0],
-          duration_minutes: Math.round(minutesPerDay),
-          is_completed: false,
-        });
-        dayIndex++;
-      }
-    }
-
-    if (items.length > 0) {
-      await supabase.from("study_plan_items").insert(items);
-    }
-
-    toast.success("Study plan generated!");
-    setShowForm(false);
-    setCreating(false);
-    fetchPlan();
   };
 
   const toggleComplete = async (itemId: string, completed: boolean) => {
@@ -249,7 +184,8 @@ export default function StudyPlan() {
 
               <div className="flex gap-3">
                 <Button onClick={generatePlan} disabled={creating}>
-                  {creating ? "Generating..." : "Generate Study Plan"}
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {creating ? "AI is generating..." : "Generate with AI"}
                 </Button>
                 <Button variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
