@@ -20,6 +20,7 @@ const userLinks = [
   { to: "/quiz", icon: ClipboardCheck, label: "Take Quiz" },
   { to: "/recommendations", icon: BookOpen, label: "Resources" },
   { to: "/study-plan", icon: Calendar, label: "Study Plan" },
+  { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 const adminLinks = [

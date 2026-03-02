@@ -12,6 +12,7 @@ import Quiz from "./pages/Quiz";
 import Recommendations from "./pages/Recommendations";
 import StudyPlan from "./pages/StudyPlan";
 import AdminPanel from "./pages/admin/AdminPanel";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/quiz" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
             <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
             <Route path="/study-plan" element={<ProtectedRoute><StudyPlan /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
