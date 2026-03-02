@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Calendar, TrendingUp, AlertTriangle } from "lucide-react";
+import { BookOpen, Calendar, TrendingUp, AlertTriangle, Sparkles, Rocket, Code2, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface TopicPerformance {
   topic_name: string;
@@ -95,9 +96,11 @@ export default function Dashboard() {
     <DashboardLayout>
       <div className="space-y-10">
         <div>
-          <h1 className="text-3xl font-display font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-display font-bold">
+            {hasTakenQuiz ? "Dashboard" : `Hey, ${user?.user_metadata?.full_name || "there"}!`}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {hasTakenQuiz ? "Your learning progress at a glance" : "Welcome! Take the placement quiz to get started."}
+            {hasTakenQuiz ? "Your learning progress at a glance" : "Let's get your learning journey started."}
           </p>
         </div>
 
@@ -106,23 +109,117 @@ export default function Dashboard() {
             <div className="h-8 w-8 rounded-full border-2 border-secondary border-t-transparent animate-spin" />
           </div>
         ) : !hasTakenQuiz ? (
-          <div className="flex items-center justify-center py-16">
-            <Card className="shadow-card max-w-md w-full text-center p-8 space-y-6">
-              <CardContent className="p-0 space-y-4">
-                <h2 className="text-2xl font-display font-bold">Welcome to CodePath</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  Take the placement quiz to assess your HTML, CSS, and JavaScript skills. We'll build a personalized learning path just for you.
-                </p>
-                <Button
-                  variant="hero"
-                  size="lg"
-                  className="px-10 text-base transition-transform duration-200 hover:scale-105"
-                  asChild
-                >
-                  <Link to="/quiz">Start Placement Quiz</Link>
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="flex flex-col items-center justify-center py-12 gap-8">
+            {/* Animated floating icons background */}
+            <div className="relative w-full max-w-2xl">
+              <motion.div
+                className="absolute -top-4 left-10 text-secondary/20"
+                animate={{ y: [0, -12, 0], rotate: [0, 10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Code2 className="h-10 w-10" />
+              </motion.div>
+              <motion.div
+                className="absolute top-8 right-8 text-accent/25"
+                animate={{ y: [0, 10, 0], rotate: [0, -15, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              >
+                <Zap className="h-8 w-8" />
+              </motion.div>
+              <motion.div
+                className="absolute bottom-0 left-1/4 text-secondary/15"
+                animate={{ y: [0, -8, 0], x: [0, 5, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              >
+                <Sparkles className="h-7 w-7" />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <Card className="shadow-elevated border-0 bg-gradient-to-br from-card via-card to-secondary/5 max-w-2xl mx-auto overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 via-transparent to-accent/5 pointer-events-none" />
+                  <CardContent className="p-10 space-y-8 relative z-10">
+                    {/* Greeting */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2, duration: 0.5 }}
+                      className="flex items-center gap-3"
+                    >
+                      <div className="h-10 w-10 rounded-full accent-gradient flex items-center justify-center">
+                        <span className="text-lg">👋</span>
+                      </div>
+                      <p className="text-lg text-muted-foreground font-medium">
+                        Welcome back, <span className="text-foreground font-semibold">{user?.user_metadata?.full_name || "Learner"}</span>
+                      </p>
+                    </motion.div>
+
+                    {/* Main heading */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35, duration: 0.5 }}
+                      className="text-center space-y-3"
+                    >
+                      <h2 className="text-3xl md:text-4xl font-display font-bold leading-tight">
+                        Ready to discover your{" "}
+                        <span className="bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">
+                          coding strengths
+                        </span>
+                        ?
+                      </h2>
+                      <p className="text-muted-foreground leading-relaxed max-w-md mx-auto">
+                        Take a quick placement quiz covering HTML, CSS & JavaScript. We'll craft a personalized learning path just for you.
+                      </p>
+                    </motion.div>
+
+                    {/* Skill chips */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5, duration: 0.5 }}
+                      className="flex items-center justify-center gap-3 flex-wrap"
+                    >
+                      {["HTML", "CSS", "JavaScript"].map((skill, i) => (
+                        <motion.span
+                          key={skill}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.6 + i * 0.1, duration: 0.3 }}
+                          className="px-4 py-1.5 rounded-full text-sm font-medium border border-border bg-muted/50 text-muted-foreground"
+                        >
+                          {skill}
+                        </motion.span>
+                      ))}
+                    </motion.div>
+
+                    {/* CTA */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7, duration: 0.4 }}
+                      className="flex flex-col items-center gap-3"
+                    >
+                      <Button
+                        variant="hero"
+                        size="lg"
+                        className="px-12 py-6 text-base gap-2 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                        asChild
+                      >
+                        <Link to="/quiz">
+                          <Rocket className="h-5 w-5" />
+                          Start Placement Quiz
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-muted-foreground">Takes about 5–10 minutes • No prep needed</p>
+                    </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
           </div>
         ) : (
           <>
