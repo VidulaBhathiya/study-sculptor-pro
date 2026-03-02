@@ -200,6 +200,23 @@ export default function Quiz() {
   if (quizComplete) {
     const score = answers.filter((a) => a.correct).length;
     const percentage = Math.round((score / questions.length) * 100);
+    const isPerfect = percentage === 100;
+
+    const getHeading = () => {
+      if (percentage === 100) return `Perfect score, ${userName}! 🎉`;
+      if (percentage >= 80) return `Amazing work, ${userName}! 🎉`;
+      if (percentage >= 60) return `Good effort, ${userName}! 💪`;
+      if (percentage >= 40) return `Keep going, ${userName}! 📚`;
+      return `Don't give up, ${userName}! 🚀`;
+    };
+
+    const getSubtext = () => {
+      if (percentage === 100) return "You aced every single question — nothing to improve!";
+      if (percentage >= 80) return `Great job! Just a few topics to brush up on.`;
+      if (percentage >= 60) return `Solid foundation! Your study plan will help fill the gaps.`;
+      if (percentage >= 40) return `You're on the right track. A focused study plan will boost your skills.`;
+      return `Everyone starts somewhere. Let's build a study plan to get you up to speed!`;
+    };
 
     return (
       <DashboardLayout>
@@ -223,7 +240,7 @@ export default function Quiz() {
             transition={{ delay: 0.4 }}
             className="text-3xl font-display font-bold"
           >
-            Amazing work, {userName}! 🎉
+            {getHeading()}
           </motion.h1>
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
@@ -239,20 +256,35 @@ export default function Quiz() {
             transition={{ delay: 0.8 }}
             className="text-muted-foreground"
           >
+            {getSubtext()}
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.85 }}
+            className="text-sm text-muted-foreground/70"
+          >
             You scored {score} out of {questions.length} questions correctly.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1 }}
-            className="flex gap-4 justify-center"
+            className="flex flex-wrap gap-4 justify-center"
           >
             <Button asChild>
               <a href="/dashboard">View Dashboard</a>
             </Button>
-            <Button variant="secondary" asChild>
-              <a href="/recommendations">View Resources</a>
-            </Button>
+            {!isPerfect && (
+              <>
+                <Button variant="secondary" asChild>
+                  <a href="/recommendations">View Resources</a>
+                </Button>
+                <Button variant="heroOutline" asChild>
+                  <a href="/study-plan">Generate Study Plan</a>
+                </Button>
+              </>
+            )}
           </motion.div>
         </motion.div>
       </DashboardLayout>
