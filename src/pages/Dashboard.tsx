@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Calendar, TrendingUp, AlertTriangle, Sparkles, Rocket, Code2, Zap } from "lucide-react";
+import { BookOpen, Calendar, TrendingUp, AlertTriangle, Sparkles, Rocket, Code2, Zap, Palette, Server, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TopicPerformance {
@@ -17,10 +17,21 @@ interface TopicPerformance {
   percentage: number;
 }
 
+interface CategoryScore {
+  category: string;
+  correct: number;
+  total: number;
+  percentage: number;
+  attempted: boolean;
+  icon: any;
+  gradient: string;
+}
+
 export default function Dashboard() {
   const { user, role, hasTakenQuiz } = useAuth();
   const [latestAttempt, setLatestAttempt] = useState<any>(null);
   const [topicPerformance, setTopicPerformance] = useState<TopicPerformance[]>([]);
+  const [categoryScores, setCategoryScores] = useState<CategoryScore[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,6 +94,44 @@ export default function Dashboard() {
         }));
         perf.sort((a, b) => a.percentage - b.percentage);
         setTopicPerformance(perf);
+
+        // Compute per-category scores
+        const categoryConfig: Record<string, { icon: any; gradient: string }> = {
+          HTML: { icon: Code2, gradient: "from-orange-500 to-red-500" },
+          CSS: { icon: Palette, gradient: "from-blue-500 to-cyan-500" },
+          JavaScript: { icon: Server, gradient: "from-violet-500 to-purple-500" },
+        };
+        const catMap: Record<string, { correct: number; total: number }> = {};
+        for (const p of perf) {
+          if (!catMap[p.category]) catMap[p.category] = { correct: 0, total: 0 };
+          catMap[p.category].correct += p.correct;
+          catMap[p.category].total += p.total;
+        }
+        const cats: CategoryScore[] = ["HTML", "CSS", "JavaScript"].map((cat) => {
+          const data = catMap[cat];
+          const cfg = categoryConfig[cat];
+          return {
+            category: cat,
+            correct: data?.correct || 0,
+            total: data?.total || 0,
+            percentage: data ? Math.round((data.correct / data.total) * 100) : 0,
+            attempted: !!data,
+            icon: cfg.icon,
+            gradient: cfg.gradient,
+          };
+        });
+        setCategoryScores(cats);
+      } else {
+        // No answers — set all categories as not attempted
+        setCategoryScores(["HTML", "CSS", "JavaScript"].map((cat) => ({
+          category: cat,
+          correct: 0,
+          total: 0,
+          percentage: 0,
+          attempted: false,
+          icon: cat === "HTML" ? Code2 : cat === "CSS" ? Palette : Server,
+          gradient: cat === "HTML" ? "from-orange-500 to-red-500" : cat === "CSS" ? "from-blue-500 to-cyan-500" : "from-violet-500 to-purple-500",
+        })));
       }
     }
     setLoading(false);
@@ -223,11 +272,61 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Score summary cards */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Category Score Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {categoryScores.map((cat, i) => (
+                <motion.div
+                  key={cat.category}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                >
+                  <Card className="overflow-hidden shadow-card border-0">
+                    <div className={`bg-gradient-to-br ${cat.gradient} p-5 text-white relative`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <cat.icon className="h-7 w-7 opacity-90" />
+                        {cat.attempted ? (
+                          cat.percentage >= 80 ? (
+                            <CheckCircle2 className="h-5 w-5 opacity-80" />
+                          ) : (
+                            <AlertTriangle className="h-5 w-5 opacity-80" />
+                          )
+                        ) : (
+                          <MinusCircle className="h-5 w-5 opacity-60" />
+                        )}
+                      </div>
+                      <h3 className="text-lg font-display font-bold">{cat.category}</h3>
+                      {cat.attempted ? (
+                        <>
+                          <div className="text-3xl font-display font-bold mt-1">{cat.percentage}%</div>
+                          <p className="text-sm opacity-80 mt-1">
+                            {cat.correct}/{cat.total} correct
+                          </p>
+                          <div className="mt-3 h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-white/80 transition-all duration-700"
+                              style={{ width: `${cat.percentage}%` }}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-lg font-medium mt-1 opacity-80">Not Attempted</div>
+                          <p className="text-sm opacity-60 mt-1">Take the quiz to see your score</p>
+                          <div className="mt-3 h-1.5 w-full rounded-full bg-white/20" />
+                        </>
+                      )}
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Overall Score + Weak Areas row */}
+            <div className="grid md:grid-cols-3 gap-5">
               <Card className="shadow-card">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Quiz Score</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Overall Score</CardTitle>
                   <TrendingUp className="h-4 w-4 text-secondary" />
                 </CardHeader>
                 <CardContent>
@@ -257,14 +356,14 @@ export default function Dashboard() {
 
               <Card className="shadow-card">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Resources</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Categories Attempted</CardTitle>
                   <BookOpen className="h-4 w-4 text-info" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-display font-bold">
-                    <Link to="/recommendations" className="text-secondary hover:underline">View</Link>
+                    {categoryScores.filter((c) => c.attempted).length}/3
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Recommended for you</p>
+                  <p className="text-xs text-muted-foreground mt-1">HTML, CSS & JavaScript</p>
                 </CardContent>
               </Card>
             </div>
