@@ -1,0 +1,1 @@
+ALTER TABLE public.learning_resources ADD COLUMN estimated_minutes integer NOT NULL DEFAULT 10;
