@@ -55,8 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastFetchedUserId.current = userId;
 
     try {
-      await fetchUserRole(userId);
-      await fetchProfile(userId);
+      await Promise.allSettled([
+        fetchUserRole(userId),
+        fetchProfile(userId),
+      ]);
     } finally {
       setLoading(false);
     }
@@ -69,45 +71,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    let initialized = false;
-    const safetyTimer = setTimeout(() => setLoading(false), 10000);
+    let isActive = true;
+    const safetyTimer = setTimeout(() => {
+      if (isActive) setLoading(false);
+    }, 10000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // Skip if getSession already handled this user
-          if (!initialized) {
-            initialized = true;
-            return;
-          }
-          // Reset ref on new sign-in so data reloads
-          if (_event === "SIGNED_IN") {
-            lastFetchedUserId.current = null;
-          }
-          await loadUserData(session.user.id);
-        } else {
-          lastFetchedUserId.current = null;
-          setRole(null);
-          setHasTakenQuiz(false);
-          setLoading(false);
-        }
-      }
-    );
+    const applySession = async (nextSession: Session | null, event?: string) => {
+      if (!isActive) return;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      initialized = true;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await loadUserData(session.user.id);
-      } else {
+      setSession(nextSession);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
+
+      if (!nextUser) {
+        lastFetchedUserId.current = null;
+        setRole(null);
+        setHasTakenQuiz(false);
         setLoading(false);
+        return;
       }
+
+      if (event === "SIGNED_IN") {
+        lastFetchedUserId.current = null;
+      }
+
+      if (lastFetchedUserId.current !== nextUser.id) {
+        setLoading(true);
+      }
+
+      await loadUserData(nextUser.id);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      void applySession(nextSession, event);
     });
 
+    void supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        await applySession(session, "INITIAL_SESSION");
+      })
+      .catch(() => {
+        if (isActive) setLoading(false);
+      });
+
     return () => {
+      isActive = false;
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
