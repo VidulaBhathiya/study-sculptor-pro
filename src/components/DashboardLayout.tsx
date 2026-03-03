@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, forwardRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,13 @@ const adminLinks = [
   { to: "/admin", icon: Settings, label: "Admin Panel" },
 ];
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+const DashboardLayout = forwardRef<HTMLDivElement, { children: ReactNode }>(function DashboardLayout({ children }, ref) {
   const { role, signOut, user } = useAuth();
   const location = useLocation();
   const links = role === "admin" ? adminLinks : userLinks;
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div ref={ref} className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border shrink-0">
         <div className="p-4 flex items-center gap-2 border-b border-sidebar-border">
@@ -96,4 +96,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </main>
     </div>
   );
-}
+});
+
+export default DashboardLayout;
