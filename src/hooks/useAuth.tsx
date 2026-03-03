@@ -46,12 +46,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loadUserData = async (userId: string) => {
-    // Prevent duplicate fetches for the same user
-    if (lastFetchedUserId.current === userId) return;
+    // Prevent duplicate fetches for the same user, but never keep loading stuck
+    if (lastFetchedUserId.current === userId) {
+      setLoading(false);
+      return;
+    }
+
     lastFetchedUserId.current = userId;
-    await fetchUserRole(userId);
-    await fetchProfile(userId);
-    setLoading(false);
+
+    try {
+      await fetchUserRole(userId);
+      await fetchProfile(userId);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const refreshProfile = async () => {
@@ -62,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let initialized = false;
+    const safetyTimer = setTimeout(() => setLoading(false), 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -98,7 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {

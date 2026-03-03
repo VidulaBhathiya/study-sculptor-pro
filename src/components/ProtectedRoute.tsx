@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -9,11 +9,15 @@ export default function ProtectedRoute({
   children: React.ReactNode;
   requiredRole?: "admin" | "user";
 }) {
-  const { user, role, loading, signOut } = useAuth();
+  const { user, role, loading } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!loading) return;
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+
     const timer = setTimeout(() => setTimedOut(true), 8000);
     return () => clearTimeout(timer);
   }, [loading]);
@@ -26,11 +30,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (timedOut || !user) {
-    // If loading timed out, sign out to clear stale session
-    if (timedOut && user) {
-      signOut();
-    }
+  if (!user || timedOut) {
     return <Navigate to="/auth" replace />;
   }
 
@@ -40,3 +40,4 @@ export default function ProtectedRoute({
 
   return <>{children}</>;
 }
+
