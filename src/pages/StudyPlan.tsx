@@ -49,7 +49,7 @@ export default function StudyPlan() {
 
   const fetchPlan = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error: planError } = await supabase
       .from("study_plans")
       .select("*")
       .eq("user_id", user.id)
@@ -57,9 +57,13 @@ export default function StudyPlan() {
       .limit(1)
       .maybeSingle();
 
+    if (planError) {
+      console.error("[StudyPlan] plan fetch error", planError);
+    }
+
     if (data) {
       // Fetch items
-      const { data: items } = await supabase
+      const { data: items, error: itemsError } = await supabase
         .from("study_plan_items")
         .select(`
           id, scheduled_date, duration_minutes, is_completed,
@@ -68,6 +72,12 @@ export default function StudyPlan() {
         `)
         .eq("plan_id", data.id)
         .order("scheduled_date");
+
+      console.log("[StudyPlan] items fetch", {
+        plan_id: data.id,
+        items_count: items?.length ?? 0,
+        items_error: itemsError?.message ?? null,
+      });
 
       setPlan({
         ...data,
@@ -98,6 +108,13 @@ export default function StudyPlan() {
           hours_per_day: parseFloat(hoursPerDay),
           preferred_days: selectedDays,
         },
+      });
+
+      console.log("[StudyPlan] generate-study-plan response", {
+        success: !data?.error,
+        items_count: data?.items_count ?? 0,
+        plan_id: data?.plan_id ?? null,
+        error: data?.error ?? null,
       });
 
       if (error) {

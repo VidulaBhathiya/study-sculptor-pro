@@ -235,7 +235,7 @@ STRICT RULES:
 
     // Enforce resource uniqueness + DB durations + day packing
     const usedResourceIds = new Set<string>();
-    const candidateItems: Array<{ topic_id: string; resource_id: string; duration_minutes: number }> = [];
+    const candidateItems: Array<{ topic_id: string; resource_id: string | null; duration_minutes: number }> = [];
 
     for (const item of (planData.items || [])) {
       if (!item?.resource_id) continue;
@@ -246,7 +246,7 @@ STRICT RULES:
       if (!targetTopicIds.has(resource.topic_id)) continue;
 
       const durationFromDb = Number(resource.estimated_minutes);
-      if (!Number.isFinite(durationFromDb) || durationFromDb <= 0 || durationFromDb > dailyMinutes) continue;
+      if (!Number.isFinite(durationFromDb) || durationFromDb <= 0) continue;
 
       usedResourceIds.add(resource.id);
       candidateItems.push({
@@ -265,13 +265,25 @@ STRICT RULES:
         if (usedResourceIds.has(resource.id)) continue;
 
         const durationFromDb = Number(resource.estimated_minutes);
-        if (!Number.isFinite(durationFromDb) || durationFromDb <= 0 || durationFromDb > dailyMinutes) continue;
+        if (!Number.isFinite(durationFromDb) || durationFromDb <= 0) continue;
 
         usedResourceIds.add(resource.id);
         candidateItems.push({
           topic_id: resource.topic_id,
           resource_id: resource.id,
           duration_minutes: durationFromDb,
+        });
+      }
+    }
+
+    // Final fallback: if there are no resources, still create topic-only sessions
+    if (candidateItems.length === 0 && sortedTargetTopics.length > 0) {
+      const fallbackDuration = Math.max(30, Math.round(dailyMinutes));
+      for (const topic of sortedTargetTopics) {
+        candidateItems.push({
+          topic_id: topic.id,
+          resource_id: null,
+          duration_minutes: fallbackDuration,
         });
       }
     }
@@ -296,11 +308,20 @@ STRICT RULES:
 
     for (const scheduledDate of schedulableDates) {
       let remainingMinutes = dailyMinutes;
+      let addedForDay = false;
 
       // PACKING: fill the current day as much as possible before moving on
       while (pendingItems.length > 0) {
-        const nextIndex = pendingItems.findIndex((entry) => entry.duration_minutes <= remainingMinutes);
-        if (nextIndex === -1) break;
+        let nextIndex = pendingItems.findIndex((entry) => entry.duration_minutes <= remainingMinutes);
+
+        // If nothing fits, still place one item to avoid empty plans when all resources are longer than daily target.
+        if (nextIndex === -1) {
+          if (addedForDay) break;
+          nextIndex = pendingItems.reduce((bestIndex, entry, index, arr) =>
+            entry.duration_minutes < arr[bestIndex].duration_minutes ? index : bestIndex,
+            0
+          );
+        }
 
         const [nextItem] = pendingItems.splice(nextIndex, 1);
         validItems.push({
@@ -312,7 +333,9 @@ STRICT RULES:
           is_completed: false,
         });
 
+        addedForDay = true;
         remainingMinutes -= nextItem.duration_minutes;
+        if (remainingMinutes <= 0) break;
       }
 
       if (pendingItems.length === 0) break;
@@ -350,6 +373,13 @@ STRICT RULES:
         console.error("Error inserting items:", itemsError);
       }
     }
+
+    console.log("generate-study-plan result", {
+      user_id: user.id,
+      success: true,
+      items_count: validItems.length,
+      plan_id: newPlan.id,
+    });
 
     return new Response(
       JSON.stringify({ success: true, plan_id: newPlan.id, items_count: validItems.length }),
