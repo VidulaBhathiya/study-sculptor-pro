@@ -233,48 +233,89 @@ STRICT RULES:
 
     const planData = JSON.parse(toolCall.function.arguments);
 
-    const validTopicIds = new Set((topics || []).map((t: any) => t.id));
-    const validResourceIds = new Set((resources || []).map((r: any) => r.id));
-
-    // FIX 1+2+4: Deduplicate, enforce exact durations, enforce daily cap
+    // Enforce resource uniqueness + DB durations + day packing
     const usedResourceIds = new Set<string>();
-    const dailyUsage: Record<string, number> = {};
+    const candidateItems: Array<{ topic_id: string; resource_id: string; duration_minutes: number }> = [];
 
-    const validItems: any[] = [];
     for (const item of (planData.items || [])) {
-      if (!validTopicIds.has(item.topic_id)) continue;
+      if (!item?.resource_id) continue;
+      if (usedResourceIds.has(item.resource_id)) continue;
 
-      // Deduplicate resources
-      if (item.resource_id && usedResourceIds.has(item.resource_id)) continue;
-      if (item.resource_id && !validResourceIds.has(item.resource_id)) {
-        item.resource_id = null;
-      }
+      const resource = resourceById.get(item.resource_id);
+      if (!resource) continue;
+      if (!targetTopicIds.has(resource.topic_id)) continue;
 
-      // FIX 2: Override duration with exact estimated_minutes from resource
-      let duration = item.duration_minutes || 30;
-      if (item.resource_id) {
-        const res = resourceById.get(item.resource_id);
-        if (res) {
-          duration = res.estimated_minutes;
-        }
-      }
+      const durationFromDb = Number(resource.estimated_minutes);
+      if (!Number.isFinite(durationFromDb) || durationFromDb <= 0 || durationFromDb > dailyMinutes) continue;
 
-      // FIX 4: Enforce daily cap
-      const date = item.scheduled_date;
-      const currentDayUsage = dailyUsage[date] || 0;
-      if (currentDayUsage + duration > dailyMinutes) continue;
-
-      dailyUsage[date] = currentDayUsage + duration;
-      if (item.resource_id) usedResourceIds.add(item.resource_id);
-
-      validItems.push({
-        plan_id: "", // placeholder, set below
-        topic_id: item.topic_id,
-        resource_id: item.resource_id || null,
-        scheduled_date: date,
-        duration_minutes: duration,
-        is_completed: false,
+      usedResourceIds.add(resource.id);
+      candidateItems.push({
+        topic_id: resource.topic_id,
+        resource_id: resource.id,
+        duration_minutes: durationFromDb,
       });
+    }
+
+    // Fallback: if AI output is sparse/invalid, use unique resources directly from DB
+    if (candidateItems.length === 0) {
+      const topicPriority = new Map(sortedTargetTopics.map((t: any, index: number) => [t.id, index]));
+      for (const resource of (resources || [])
+        .filter((r: any) => targetTopicIds.has(r.topic_id))
+        .sort((a: any, b: any) => (topicPriority.get(a.topic_id) ?? 999) - (topicPriority.get(b.topic_id) ?? 999))) {
+        if (usedResourceIds.has(resource.id)) continue;
+
+        const durationFromDb = Number(resource.estimated_minutes);
+        if (!Number.isFinite(durationFromDb) || durationFromDb <= 0 || durationFromDb > dailyMinutes) continue;
+
+        usedResourceIds.add(resource.id);
+        candidateItems.push({
+          topic_id: resource.topic_id,
+          resource_id: resource.id,
+          duration_minutes: durationFromDb,
+        });
+      }
+    }
+
+    const preferredDaySet = new Set((preferred_days || []).map((d: string) => d));
+    const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const toISODate = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const schedulableDates: string[] = [];
+    const today = new Date();
+    for (let offset = 0; offset < 28; offset++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + offset);
+      if (preferredDaySet.has(weekDays[date.getDay()])) {
+        schedulableDates.push(toISODate(date));
+      }
+    }
+
+    const pendingItems = [...candidateItems];
+    const validItems: any[] = [];
+
+    for (const scheduledDate of schedulableDates) {
+      let remainingMinutes = dailyMinutes;
+
+      // PACKING: fill the current day as much as possible before moving on
+      while (pendingItems.length > 0) {
+        const nextIndex = pendingItems.findIndex((entry) => entry.duration_minutes <= remainingMinutes);
+        if (nextIndex === -1) break;
+
+        const [nextItem] = pendingItems.splice(nextIndex, 1);
+        validItems.push({
+          plan_id: "", // placeholder, set below
+          topic_id: nextItem.topic_id,
+          resource_id: nextItem.resource_id,
+          scheduled_date: scheduledDate,
+          duration_minutes: nextItem.duration_minutes,
+          is_completed: false,
+        });
+
+        remainingMinutes -= nextItem.duration_minutes;
+      }
+
+      if (pendingItems.length === 0) break;
     }
 
     // Create the study plan
