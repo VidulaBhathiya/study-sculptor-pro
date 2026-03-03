@@ -72,6 +72,12 @@ Deno.serve(async (req) => {
       .from("learning_resources")
       .select("id, title, topic_id, resource_type, estimated_minutes, description");
 
+    // Fetch user's resource recommendations (from quiz results)
+    const { data: recommendations } = await supabase
+      .from("resource_recommendations")
+      .select("topic_id, resource_id")
+      .eq("user_id", user.id);
+
     // Calculate per-topic performance
     const topicPerformance: Record<string, { correct: number; total: number }> = {};
     for (const ans of answersWithTopics) {
@@ -82,64 +88,64 @@ Deno.serve(async (req) => {
       if (ans.is_correct) topicPerformance[topicId].correct++;
     }
 
-    // Build context for AI
-    const topicSummary = (topics || []).map((t: any) => {
-      const perf = topicPerformance[t.id];
-      const score = perf ? Math.round((perf.correct / perf.total) * 100) : null;
-      return `- ${t.name} (${t.category}): ${score !== null ? `${score}% correct (${perf!.correct}/${perf!.total})` : "not tested"}`;
-    }).join("\n");
+    // Use recommended topic IDs — these are the topics the user actually needs help with
+    const recommendedTopicIds = new Set((recommendations || []).map((r: any) => r.topic_id));
+    const recommendedResourceIds = new Set((recommendations || []).map((r: any) => r.resource_id));
 
-    const resourceSummary = (resources || []).map((r: any) => {
-      const topic = (topics || []).find((t: any) => t.id === r.topic_id);
-      return `- [${r.id}] "${r.title}" (${r.resource_type}, ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
-    }).join("\n");
+    // If no recommendations, fall back to weak topics from quiz
+    let targetTopicIds: Set<string>;
+    if (recommendedTopicIds.size > 0) {
+      targetTopicIds = recommendedTopicIds;
+    } else {
+      // Fallback: topics with score < 70% or not tested
+      targetTopicIds = new Set(
+        (topics || [])
+          .filter((t: any) => {
+            const perf = topicPerformance[t.id];
+            if (!perf) return true;
+            return (perf.correct / perf.total) < 0.7;
+          })
+          .map((t: any) => t.id)
+      );
+    }
 
-    // Identify weak topics (score < 70% or not tested)
-    const weakTopicIds = (topics || [])
-      .filter((t: any) => {
-        const perf = topicPerformance[t.id];
-        if (!perf) return true; // not tested = weak
-        return (perf.correct / perf.total) < 0.7;
-      })
-      .map((t: any) => t.id);
-
-    const weakTopicSummary = (topics || [])
-      .filter((t: any) => weakTopicIds.includes(t.id))
+    const targetTopicSummary = (topics || [])
+      .filter((t: any) => targetTopicIds.has(t.id))
       .map((t: any) => {
         const perf = topicPerformance[t.id];
         const score = perf ? Math.round((perf.correct / perf.total) * 100) : null;
         return `- ${t.name} (${t.category}): ${score !== null ? `${score}% correct (${perf!.correct}/${perf!.total})` : "not tested yet"}`;
       }).join("\n");
 
-    const weakResourceSummary = (resources || [])
-      .filter((r: any) => weakTopicIds.includes(r.topic_id))
+    const targetResourceSummary = (resources || [])
+      .filter((r: any) => targetTopicIds.has(r.topic_id))
       .map((r: any) => {
         const topic = (topics || []).find((t: any) => t.id === r.topic_id);
         return `- [${r.id}] "${r.title}" (${r.resource_type}, ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
       }).join("\n");
 
-    const prompt = `You are a study plan generator for an educational platform. Based on the student's quiz performance, create a 4-week study plan focusing ONLY on their WEAK topics (topics they scored poorly on or haven't been tested on).
+    const prompt = `You are a study plan generator for an educational platform. Based on the student's quiz performance and recommended resources, create a 4-week study plan focusing ONLY on the topics they need to improve.
 
 Student availability:
 - Hours per day: ${hours_per_day}
 - Preferred study days: ${preferred_days.join(", ")}
 - Minutes per study day: ${Math.round(hours_per_day * 60)}
 
-WEAK topics to focus on (these are the ONLY topics to include):
-${weakTopicSummary || "No weak topics identified."}
+Topics to focus on (ONLY include these topics):
+${targetTopicSummary || "No topics identified."}
 
-Available learning resources for weak topics:
-${weakResourceSummary || "No resources available."}
+Available learning resources for these topics:
+${targetResourceSummary || "No resources available."}
 
 Rules:
-1. ONLY include topics from the weak topics list above — do NOT include strong topics
-2. Prioritize the weakest topics (lowest scores) with more sessions
+1. ONLY include topics from the list above — do NOT add any other topics
+2. Spread sessions evenly across the 4 weeks
 3. Each study item should have a topic_id, an optional resource_id, a scheduled_date (YYYY-MM-DD format), and duration_minutes
 4. Start from today: ${new Date().toISOString().split("T")[0]}
 5. Only schedule on the preferred days
 6. Total daily duration should not exceed ${Math.round(hours_per_day * 60)} minutes
 7. Use the exact resource IDs and topic IDs provided above
-8. Generate 3-4 weeks of items`;
+8. Generate at least 1 item per preferred day per week (fill all 4 weeks)`;
 
     // Use tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
