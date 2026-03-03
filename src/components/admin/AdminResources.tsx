@@ -32,7 +32,7 @@ export default function AdminResources() {
   const [editId, setEditId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lockedCategory, setLockedCategory] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", url: "", resource_type: "video", topic_id: "" });
+  const [form, setForm] = useState({ title: "", description: "", url: "", resource_type: "video", topic_id: "", estimated_minutes: 30 });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -46,7 +46,7 @@ export default function AdminResources() {
     setLoading(false);
   };
 
-  const resetForm = () => { setForm({ title: "", description: "", url: "", resource_type: "video", topic_id: "" }); setEditId(null); setLockedCategory(null); };
+  const resetForm = () => { setForm({ title: "", description: "", url: "", resource_type: "video", topic_id: "", estimated_minutes: 30 }); setEditId(null); setLockedCategory(null); };
 
   const handleAddForCategory = (category: string) => {
     resetForm();
@@ -68,7 +68,7 @@ export default function AdminResources() {
   };
 
   const handleEdit = (r: Resource) => {
-    setForm({ title: r.title, description: r.description || "", url: r.url, resource_type: r.resource_type, topic_id: r.topic_id });
+    setForm({ title: r.title, description: r.description || "", url: r.url, resource_type: r.resource_type, topic_id: r.topic_id, estimated_minutes: (r as any).estimated_minutes ?? 30 });
     setLockedCategory(r.topic?.category || null);
     setEditId(r.id); setDialogOpen(true);
   };
@@ -174,6 +174,10 @@ export default function AdminResources() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{["video", "document", "tutorial", "article"].map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Estimated Duration (minutes)</Label>
+              <Input type="number" min={0} value={form.estimated_minutes} onChange={(e) => setForm({ ...form, estimated_minutes: Number(e.target.value) })} />
             </div>
             <Button onClick={handleSave} disabled={saving} className="w-full">{saving ? "Saving..." : editId ? "Update" : "Add Resource"}</Button>
           </div>
