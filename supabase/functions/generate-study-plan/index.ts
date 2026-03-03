@@ -94,22 +94,46 @@ Deno.serve(async (req) => {
       return `- [${r.id}] "${r.title}" (${r.resource_type}, ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
     }).join("\n");
 
-    const prompt = `You are a study plan generator for an educational platform. Based on the student's quiz performance and available resources, create a 4-week study plan.
+    // Identify weak topics (score < 70% or not tested)
+    const weakTopicIds = (topics || [])
+      .filter((t: any) => {
+        const perf = topicPerformance[t.id];
+        if (!perf) return true; // not tested = weak
+        return (perf.correct / perf.total) < 0.7;
+      })
+      .map((t: any) => t.id);
+
+    const weakTopicSummary = (topics || [])
+      .filter((t: any) => weakTopicIds.includes(t.id))
+      .map((t: any) => {
+        const perf = topicPerformance[t.id];
+        const score = perf ? Math.round((perf.correct / perf.total) * 100) : null;
+        return `- ${t.name} (${t.category}): ${score !== null ? `${score}% correct (${perf!.correct}/${perf!.total})` : "not tested yet"}`;
+      }).join("\n");
+
+    const weakResourceSummary = (resources || [])
+      .filter((r: any) => weakTopicIds.includes(r.topic_id))
+      .map((r: any) => {
+        const topic = (topics || []).find((t: any) => t.id === r.topic_id);
+        return `- [${r.id}] "${r.title}" (${r.resource_type}, ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
+      }).join("\n");
+
+    const prompt = `You are a study plan generator for an educational platform. Based on the student's quiz performance, create a 4-week study plan focusing ONLY on their WEAK topics (topics they scored poorly on or haven't been tested on).
 
 Student availability:
 - Hours per day: ${hours_per_day}
 - Preferred study days: ${preferred_days.join(", ")}
 - Minutes per study day: ${Math.round(hours_per_day * 60)}
 
-Topic performance (from recent quizzes):
-${topicSummary || "No quiz data available yet."}
+WEAK topics to focus on (these are the ONLY topics to include):
+${weakTopicSummary || "No weak topics identified."}
 
-Available learning resources:
-${resourceSummary || "No resources available."}
+Available learning resources for weak topics:
+${weakResourceSummary || "No resources available."}
 
 Rules:
-1. Prioritize weak topics (low scores) with more study sessions
-2. Don't ignore strong topics entirely — include maintenance sessions
+1. ONLY include topics from the weak topics list above — do NOT include strong topics
+2. Prioritize the weakest topics (lowest scores) with more sessions
 3. Each study item should have a topic_id, an optional resource_id, a scheduled_date (YYYY-MM-DD format), and duration_minutes
 4. Start from today: ${new Date().toISOString().split("T")[0]}
 5. Only schedule on the preferred days
