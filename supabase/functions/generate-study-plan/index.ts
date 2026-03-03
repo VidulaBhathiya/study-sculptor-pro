@@ -160,7 +160,7 @@ STRICT RULES:
 6. Only schedule on preferred days: ${preferred_days.join(", ")}
 7. Use exact resource IDs and topic IDs provided
 8. Fill all 4 weeks with at least 1 item per preferred day
-9. Do NOT use the same resource_id more than once in the entire plan`;
+9. It's okay to repeat the same resource_id across multiple days only for splitting; total split duration must equal that resource's EXACT estimated_minutes`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -303,39 +303,41 @@ STRICT RULES:
       }
     }
 
-    const pendingItems = [...candidateItems];
+    const pendingItems = candidateItems.map((item) => ({
+      topic_id: item.topic_id,
+      resource_id: item.resource_id,
+      remaining_minutes: item.duration_minutes,
+    }));
     const validItems: any[] = [];
 
     for (const scheduledDate of schedulableDates) {
       let remainingMinutes = dailyMinutes;
-      let addedForDay = false;
 
-      // PACKING: fill the current day as much as possible before moving on
-      while (pendingItems.length > 0) {
-        let nextIndex = pendingItems.findIndex((entry) => entry.duration_minutes <= remainingMinutes);
+      // PACKING WITH SPLITS: split oversized resources across days with carry-over
+      while (remainingMinutes > 0 && pendingItems.length > 0) {
+        const current = pendingItems[0];
+        const allocatedMinutes = Math.min(remainingMinutes, current.remaining_minutes);
 
-        // If nothing fits, still place one item to avoid empty plans when all resources are longer than daily target.
-        if (nextIndex === -1) {
-          if (addedForDay) break;
-          nextIndex = pendingItems.reduce((bestIndex, entry, index, arr) =>
-            entry.duration_minutes < arr[bestIndex].duration_minutes ? index : bestIndex,
-            0
-          );
+        if (allocatedMinutes <= 0) {
+          pendingItems.shift();
+          continue;
         }
 
-        const [nextItem] = pendingItems.splice(nextIndex, 1);
         validItems.push({
           plan_id: "", // placeholder, set below
-          topic_id: nextItem.topic_id,
-          resource_id: nextItem.resource_id,
+          topic_id: current.topic_id,
+          resource_id: current.resource_id,
           scheduled_date: scheduledDate,
-          duration_minutes: nextItem.duration_minutes,
+          duration_minutes: allocatedMinutes,
           is_completed: false,
         });
 
-        addedForDay = true;
-        remainingMinutes -= nextItem.duration_minutes;
-        if (remainingMinutes <= 0) break;
+        current.remaining_minutes -= allocatedMinutes;
+        remainingMinutes -= allocatedMinutes;
+
+        if (current.remaining_minutes <= 0) {
+          pendingItems.shift();
+        }
       }
 
       if (pendingItems.length === 0) break;
