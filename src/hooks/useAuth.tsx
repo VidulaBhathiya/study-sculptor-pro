@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,14 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasTakenQuiz, setHasTakenQuiz] = useState(false);
+  const lastFetchedUserId = useRef<string | null>(null);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-    setRole((data?.role as UserRole) || "user");
+      .eq("user_id", userId);
+    // Check for admin role first, fallback to user
+    const roles = (data || []).map((r: any) => r.role);
+    setRole(roles.includes("admin") ? "admin" : "user");
   };
 
   const fetchProfile = async (userId: string) => {
@@ -43,6 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHasTakenQuiz(data?.has_taken_quiz || false);
   };
 
+  const loadUserData = async (userId: string) => {
+    // Prevent duplicate fetches for the same user
+    if (lastFetchedUserId.current === userId) return;
+    lastFetchedUserId.current = userId;
+    await fetchUserRole(userId);
+    await fetchProfile(userId);
+    setLoading(false);
+  };
+
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id);
@@ -50,17 +61,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let initialized = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(async () => {
-            await fetchUserRole(session.user.id);
-            await fetchProfile(session.user.id);
-            setLoading(false);
-          }, 0);
+          // Skip if getSession already handled this user
+          if (!initialized) {
+            initialized = true;
+            return;
+          }
+          // Reset ref on new sign-in so data reloads
+          if (_event === "SIGNED_IN") {
+            lastFetchedUserId.current = null;
+          }
+          await loadUserData(session.user.id);
         } else {
+          lastFetchedUserId.current = null;
           setRole(null);
           setHasTakenQuiz(false);
           setLoading(false);
@@ -68,13 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      initialized = true;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id).then(() =>
-          fetchProfile(session.user.id).then(() => setLoading(false))
-        );
+        await loadUserData(session.user.id);
       } else {
         setLoading(false);
       }
