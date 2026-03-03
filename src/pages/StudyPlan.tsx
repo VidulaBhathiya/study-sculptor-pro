@@ -41,6 +41,7 @@ export default function StudyPlan() {
   const [hoursPerDay, setHoursPerDay] = useState("1");
   const [selectedDays, setSelectedDays] = useState<string[]>(["Monday", "Wednesday", "Friday"]);
   const [showForm, setShowForm] = useState(false);
+  const [filterCompleted, setFilterCompleted] = useState(false);
 
   useEffect(() => {
     fetchPlan();
@@ -212,8 +213,21 @@ export default function StudyPlan() {
               </span>
             </div>
 
+            <div className="flex items-center gap-3 mb-2">
+              <Button
+                variant={filterCompleted ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterCompleted(!filterCompleted)}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                {filterCompleted ? "Showing Completed Only" : "Show Completed Only"}
+              </Button>
+            </div>
+
             <div className="space-y-2">
-              {plan.items.map((item) => (
+              {plan.items
+                .filter((item) => !filterCompleted || item.is_completed)
+                .map((item) => (
                 <Card
                   key={item.id}
                   className={`shadow-card transition-all ${item.is_completed ? "opacity-60" : ""}`}
