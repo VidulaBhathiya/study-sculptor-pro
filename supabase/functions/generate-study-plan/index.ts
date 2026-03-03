@@ -29,7 +29,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify user
     const anonClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -53,7 +52,6 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(3);
 
-    // Fetch quiz answers with topic info
     const attemptIds = (attempts || []).map((a: any) => a.id);
     let answersWithTopics: any[] = [];
     if (attemptIds.length > 0) {
@@ -64,15 +62,11 @@ Deno.serve(async (req) => {
       answersWithTopics = data || [];
     }
 
-    // Fetch all topics
     const { data: topics } = await supabase.from("topics").select("id, name, category, description");
-
-    // Fetch available resources with estimated time
     const { data: resources } = await supabase
       .from("learning_resources")
       .select("id, title, topic_id, resource_type, estimated_minutes, description");
 
-    // Fetch user's resource recommendations (from quiz results)
     const { data: recommendations } = await supabase
       .from("resource_recommendations")
       .select("topic_id, resource_id")
@@ -88,16 +82,21 @@ Deno.serve(async (req) => {
       if (ans.is_correct) topicPerformance[topicId].correct++;
     }
 
-    // Use recommended topic IDs — these are the topics the user actually needs help with
-    const recommendedTopicIds = new Set((recommendations || []).map((r: any) => r.topic_id));
-    const recommendedResourceIds = new Set((recommendations || []).map((r: any) => r.resource_id));
+    // FIX 1: Deduplicate recommendations by resource_id
+    const seenResourceIds = new Set<string>();
+    const uniqueRecommendations = (recommendations || []).filter((r: any) => {
+      if (seenResourceIds.has(r.resource_id)) return false;
+      seenResourceIds.add(r.resource_id);
+      return true;
+    });
 
-    // If no recommendations, fall back to weak topics from quiz
+    const recommendedTopicIds = new Set(uniqueRecommendations.map((r: any) => r.topic_id));
+    const recommendedResourceIds = new Set(uniqueRecommendations.map((r: any) => r.resource_id));
+
     let targetTopicIds: Set<string>;
     if (recommendedTopicIds.size > 0) {
       targetTopicIds = recommendedTopicIds;
     } else {
-      // Fallback: topics with score < 70% or not tested
       targetTopicIds = new Set(
         (topics || [])
           .filter((t: any) => {
@@ -109,45 +108,60 @@ Deno.serve(async (req) => {
       );
     }
 
-    const targetTopicSummary = (topics || [])
+    // FIX 3: Sort topics by weakness (lowest score first)
+    const sortedTargetTopics = (topics || [])
       .filter((t: any) => targetTopicIds.has(t.id))
-      .map((t: any) => {
+      .sort((a: any, b: any) => {
+        const perfA = topicPerformance[a.id];
+        const perfB = topicPerformance[b.id];
+        const scoreA = perfA ? (perfA.correct / perfA.total) : 0; // untested = 0 (weakest)
+        const scoreB = perfB ? (perfB.correct / perfB.total) : 0;
+        return scoreA - scoreB; // ascending = weakest first
+      });
+
+    // Build resource lookup by id for estimated_minutes
+    const resourceById = new Map((resources || []).map((r: any) => [r.id, r]));
+
+    const targetTopicSummary = sortedTargetTopics
+      .map((t: any, i: number) => {
         const perf = topicPerformance[t.id];
         const score = perf ? Math.round((perf.correct / perf.total) * 100) : null;
-        return `- ${t.name} (${t.category}): ${score !== null ? `${score}% correct (${perf!.correct}/${perf!.total})` : "not tested yet"}`;
+        return `- [Priority ${i + 1}] ${t.name} (${t.category}): ${score !== null ? `${score}% correct` : "not tested yet"}`;
       }).join("\n");
 
+    // FIX 2: Include exact estimated_minutes in resource summary
     const targetResourceSummary = (resources || [])
       .filter((r: any) => targetTopicIds.has(r.topic_id))
       .map((r: any) => {
         const topic = (topics || []).find((t: any) => t.id === r.topic_id);
-        return `- [${r.id}] "${r.title}" (${r.resource_type}, ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
+        return `- [${r.id}] "${r.title}" (${r.resource_type}, EXACT duration: ${r.estimated_minutes}min) for topic "${topic?.name || "unknown"}" [topic_id: ${r.topic_id}]`;
       }).join("\n");
 
-    const prompt = `You are a study plan generator for an educational platform. Based on the student's quiz performance and recommended resources, create a 4-week study plan focusing ONLY on the topics they need to improve.
+    const dailyMinutes = Math.round(hours_per_day * 60);
+
+    const prompt = `You are a study plan generator. Create a 4-week study plan based on student performance.
 
 Student availability:
-- Hours per day: ${hours_per_day}
+- Minutes per study day: ${dailyMinutes}
 - Preferred study days: ${preferred_days.join(", ")}
-- Minutes per study day: ${Math.round(hours_per_day * 60)}
 
-Topics to focus on (ONLY include these topics):
+Topics ordered by PRIORITY (weakest first — schedule these FIRST):
 ${targetTopicSummary || "No topics identified."}
 
-Available learning resources for these topics:
+Available resources (use EXACT duration_minutes from each resource):
 ${targetResourceSummary || "No resources available."}
 
-Rules:
-1. ONLY include topics from the list above — do NOT add any other topics
-2. Spread sessions evenly across the 4 weeks
-3. Each study item should have a topic_id, an optional resource_id, a scheduled_date (YYYY-MM-DD format), and duration_minutes
-4. Start from today: ${new Date().toISOString().split("T")[0]}
-5. Only schedule on the preferred days
-6. Total daily duration should not exceed ${Math.round(hours_per_day * 60)} minutes
-7. Use the exact resource IDs and topic IDs provided above
-8. Generate at least 1 item per preferred day per week (fill all 4 weeks)`;
+STRICT RULES:
+1. ONLY use topics from the list above
+2. Schedule weakest topics (Priority 1, 2, etc.) in the EARLIEST days
+3. For duration_minutes, you MUST use the EXACT estimated_minutes value shown for each resource — do NOT invent or change durations
+4. Each day's total duration_minutes must NOT exceed ${dailyMinutes} minutes
+5. Start from today: ${new Date().toISOString().split("T")[0]}
+6. Only schedule on preferred days: ${preferred_days.join(", ")}
+7. Use exact resource IDs and topic IDs provided
+8. Fill all 4 weeks with at least 1 item per preferred day
+9. Do NOT use the same resource_id more than once in the entire plan`;
 
-    // Use tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -176,9 +190,9 @@ Rules:
                       type: "object",
                       properties: {
                         topic_id: { type: "string", description: "UUID of the topic" },
-                        resource_id: { type: "string", description: "UUID of the resource, or null if no specific resource" },
+                        resource_id: { type: "string", description: "UUID of the resource, or null" },
                         scheduled_date: { type: "string", description: "YYYY-MM-DD format" },
-                        duration_minutes: { type: "number", description: "Duration in minutes" },
+                        duration_minutes: { type: "number", description: "MUST match the resource's estimated_minutes exactly" },
                       },
                       required: ["topic_id", "scheduled_date", "duration_minutes"],
                       additionalProperties: false,
@@ -198,14 +212,12 @@ Rules:
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ error: "AI usage limit reached. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await aiResponse.text();
@@ -221,9 +233,49 @@ Rules:
 
     const planData = JSON.parse(toolCall.function.arguments);
 
-    // Validate topic_ids and resource_ids exist
     const validTopicIds = new Set((topics || []).map((t: any) => t.id));
     const validResourceIds = new Set((resources || []).map((r: any) => r.id));
+
+    // FIX 1+2+4: Deduplicate, enforce exact durations, enforce daily cap
+    const usedResourceIds = new Set<string>();
+    const dailyUsage: Record<string, number> = {};
+
+    const validItems: any[] = [];
+    for (const item of (planData.items || [])) {
+      if (!validTopicIds.has(item.topic_id)) continue;
+
+      // Deduplicate resources
+      if (item.resource_id && usedResourceIds.has(item.resource_id)) continue;
+      if (item.resource_id && !validResourceIds.has(item.resource_id)) {
+        item.resource_id = null;
+      }
+
+      // FIX 2: Override duration with exact estimated_minutes from resource
+      let duration = item.duration_minutes || 30;
+      if (item.resource_id) {
+        const res = resourceById.get(item.resource_id);
+        if (res) {
+          duration = res.estimated_minutes;
+        }
+      }
+
+      // FIX 4: Enforce daily cap
+      const date = item.scheduled_date;
+      const currentDayUsage = dailyUsage[date] || 0;
+      if (currentDayUsage + duration > dailyMinutes) continue;
+
+      dailyUsage[date] = currentDayUsage + duration;
+      if (item.resource_id) usedResourceIds.add(item.resource_id);
+
+      validItems.push({
+        plan_id: "", // placeholder, set below
+        topic_id: item.topic_id,
+        resource_id: item.resource_id || null,
+        scheduled_date: date,
+        duration_minutes: duration,
+        is_completed: false,
+      });
+    }
 
     // Create the study plan
     const startDate = new Date().toISOString().split("T")[0];
@@ -246,17 +298,10 @@ Rules:
       throw new Error("Failed to create study plan");
     }
 
-    // Filter and insert valid items
-    const validItems = (planData.items || [])
-      .filter((item: any) => validTopicIds.has(item.topic_id))
-      .map((item: any) => ({
-        plan_id: newPlan.id,
-        topic_id: item.topic_id,
-        resource_id: item.resource_id && validResourceIds.has(item.resource_id) ? item.resource_id : null,
-        scheduled_date: item.scheduled_date,
-        duration_minutes: item.duration_minutes || 30,
-        is_completed: false,
-      }));
+    // Set plan_id on all items
+    for (const item of validItems) {
+      item.plan_id = newPlan.id;
+    }
 
     if (validItems.length > 0) {
       const { error: itemsError } = await supabase.from("study_plan_items").insert(validItems);
