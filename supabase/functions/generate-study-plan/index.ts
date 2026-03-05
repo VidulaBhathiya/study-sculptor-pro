@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
       .from("study_plans")
       .insert({
         user_id: user.id,
-        name: planData.plan_name || "AI Study Plan",
+        name: "Personalized Study Plan",
         hours_per_day,
         preferred_days,
         start_date: startDate,
